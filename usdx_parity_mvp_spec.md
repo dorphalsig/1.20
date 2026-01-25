@@ -456,48 +456,35 @@ Implement octave normalization exactly as above (shift detected `tone` by 12 unt
 
 ## 6.5 Line Bonus
 
-**USDX behavior (authoritative from source)**
+Line bonus is a scoring mode that reserves 1000 points of the 10000-point total for sentence/line completion.
 
-**When line bonus is enabled**
-- Line bonus is enabled when `Ini.LineBonus > 0`.
-- The total score budget is split:
- - If line bonus OFF: `MaxSongScore = 10000`
- - If line bonus ON: `MaxSongScore = 10000 - 1000` (notes+golden use 9000; line bonus uses 1000)
+Enable/disable (normative):
+- Setting `LineBonusEnabled` (boolean), default ON.
+- If OFF: `MaxSongPoints = 10000` and `MaxLineBonusPool = 0`.
+- If ON: `MaxSongPoints = 9000` (notes+golden budget) and `MaxLineBonusPool = 1000`.
 
-**Per-line max score**
-For a sentence/line, USDX computes the maximum points available for that line (from notes budget) as:
-- `MaxLineScore = MaxSongScore * (Line.ScoreValue / Song.Track.ScoreValue)`
+Per-line max score (normative):
+- Each track computes `TrackScoreValue = sum(Note.Duration * ScoreFactor[noteType])` over all notes in the track (Section 6.5).
+- Each line/sentence computes `LineScoreValue = sum(Note.Duration * ScoreFactor[noteType])` over its notes.
+- For a line, define the note-score budget available to that line as:
+  `MaxLineScore = MaxSongPoints * (LineScoreValue / TrackScoreValue)`
 
-`Line.ScoreValue` and `Song.Track.ScoreValue` are computed while parsing notes as:
-
-ScoreFactor constants (MVP, normative):
-- ntFreestyle (F): 0
-- ntNormal (:): 1
-- ntGolden (*): 2
-- ntRap (R): 1
-- ntRapGolden (G): 2
-
-- `ScoreValue += Note.Duration * ScoreFactor[noteType]` (freestyle contributes 0).
-
-**Line perfection**
+Line perfection (normative):
 At sentence end:
 - `LineScore = (Player.Score + Player.ScoreGolden) - Player.ScoreLast`
 - If `MaxLineScore <= 2` then `LinePerfection = 1`
-- Else `LinePerfection = LineScore / (MaxLineScore - 2)`
-- Clamp `LinePerfection` to [0..1]
+- Else `LinePerfection = clamp(LineScore / (MaxLineScore - 2), 0, 1)`
 
+Line bonus distribution (normative, when LineBonusEnabled=ON):
+- A line is empty if `LineScoreValue = 0`. Empty lines do not receive line bonus.
+- Let `NonEmptyLines = NumLines - NumEmptyLines`. Then:
+  - `LineBonusPerLine = MaxLineBonusPool / NonEmptyLines`
+  - `Player.ScoreLine += LineBonusPerLine * LinePerfection`
 
-**Line bonus distribution**
-- Each **non-empty** line gets an equal slice of the 1000-point line bonus pool:
- - `LineBonusPerLine = 1000 / (NumLines - NumEmptySentences)`
- - A line is empty if `Line.ScoreValue = 0`.
-- Player receives `LineBonusPerLine * LinePerfection`, accumulated into `Player.ScoreLine`.
-
-**Rounding**
-- `Player.ScoreLineInt := Floor(Round(Player.ScoreLine) / 10) * 10` (line score is rounded then floored-to-tens).
+Rounding: see Section 6.6.
 
 **Parity requirement**
-Implement sentence-end scoring and line bonus exactly as above, including the `-2` forgiveness and the line-bonus rounding rule.
+Implement sentence-end scoring and line bonus exactly as above, including the `-2` forgiveness term.
 
 ## 6.6 Rounding and Display
 
