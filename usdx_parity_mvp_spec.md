@@ -1127,7 +1127,7 @@ Expected result (receiver reconstruction):
 
 ## C.3 Future scoring fixtures (reserved)
 
-Scoring fixtures (song + pitch stream + expected total score breakdown) are out of scope for Appendix C in v0.2. When added, each scoring fixture MUST provide:
+Scoring fixtures (song + pitch stream + expected total score breakdown) are out of scope for Appendix C in v0.3. When added, each scoring fixture MUST provide:
 - Covered song_time_ms window and all timing assumptions (BPM, GAP, micDelayMs, and any drift correction settings).
 - Expected per-checkpoint state (active note id, judgement bucket) and final score totals.
 - Enough detail to reproduce results deterministically without referencing USDX source code.
