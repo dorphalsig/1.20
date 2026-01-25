@@ -380,23 +380,29 @@ Boundary conventions:
 
 ## 5.3 START/END/NOTESGAP
 
-**START**
-- Parsed from `#START:` as a float seconds value stored in `Song.Start`.
-- At song load (sing screen), lyrics timer current time is initialized to `Song.Start` for normal mode.
-- Audio playback is positioned to `LyricsState.GetCurrentTime()` (which was set to `Song.Start`).
-- Video start position is set to `VideoGAP + Song.Start` (normal mode).
+This section defines how the optional TXT headers `#START` and `#END` affect playback, and how legacy `#NOTESGAP`/`#RESOLUTION` behave.
 
-**END**
-- Parsed from `#END:` as an integer stored in `Song.Finish` (milliseconds).
-- If `Finish > 0`, lyrics timer `TotalTime` is set to `Finish/1000`; otherwise it uses the audio length.
+START (normative)
+- `#START:` is parsed as a float seconds value `startSec`.
+- When entering the Singing screen in normal play, the song timeline `songTimeSec` and audio playback position MUST be initialized to `startSec`.
+- If a video is present, its playback position MUST be initialized to `videoGapSec + startSec` (see Section 4.2 for `videoGapSec`).
 
-**NOTESGAP and RESOLUTION**
-- These headers are only honored for **format versions < 1.0.0**; for 1.0.0 they are ignored with an info log.
-- When honored, `NOTESGAP` is used for beat-click scheduling and editor/drawing beat delimiter alignment (not scoring). Example: beat click checks `(CurrentBeatC + Resolution + NotesGAP) mod Resolution`.
+END (normative)
+- `#END:` is parsed as an integer milliseconds value `endMs`.
+- If `endMs > 0`, the song MUST end when `songTimeSec >= endMs/1000.0` (after applying the same start initialization above).
+- If `endMs <= 0` or missing, the song duration is determined by the audio track length.
 
-**Gameplay-visible behaviors that depend on START/END**
-- **Restart song** resets scores and seeks to `Song.Start` (and sets video to `VideoGAP + Song.Start`).
-- **Skip intro** (key `S`) seeks to **5 seconds before** the first upcoming line start if the first line is >6 seconds ahead (duet uses the earlier of the two tracks).
+NOTESGAP and RESOLUTION (normative)
+- These headers are honored only for format versions < 1.0.0. For format version >= 1.0.0 they MUST be ignored with an info log.
+- When honored, NOTESGAP/RESOLUTION affect only beat-click scheduling and editor/drawing beat delimiter alignment. They MUST NOT affect scoring.
+
+Gameplay behaviors that depend on START/END (normative)
+- Restart song: resets per-player scores/state and seeks playback back to `startSec` (and video to `videoGapSec + startSec`).
+- Skip intro action: when triggered during singing, if the next upcoming line start time is more than 6.0 seconds ahead of current `songTimeSec`, seek to 5.0 seconds before that next line start time.
+  - For duet songs, compute the next-line start time as the earlier of the two tracks.
+  - The seek target MUST be clamped to at least `startSec`.
+
+
 
 # 6. Scoring (Parity-Critical)
 
