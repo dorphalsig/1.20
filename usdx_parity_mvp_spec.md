@@ -140,6 +140,56 @@ Audio/video/instrumental files are validated for existence at load time:
 
  Define which fields must be stored to render Song Select without full re-parse (e.g., title/artist, flags, URIs, modified times, validation status, duet labels).
 
+
+## 3.4 Song List (Landing Screen)
+
+**Purpose**
+- Always the landing screen (even if library is empty).
+- Displays songs sorted by **Artist -> Album -> Title**.
+- MVP has **no song queue/playlist**; only one song is selected and played at a time.
+
+**Header actions**
+- **Settings** button: opens Settings screen.
+- **Search** button: opens Search overlay (see Section 3.5).
+
+**Empty state**
+- If no songs are indexed, show:
+ - No songs found.
+ - Hint: Open Settings -> Song Library to add a songs folder.
+
+**Song row display**
+- Minimum: Title, Artist, Album (if present).
+- Icons/flags (if known from index): Duet, Rap, Video, Instrumental available.
+
+**Selection behavior**
+- OK on a song opens **Assign Singers** overlay (Section 10.3).
+
+**Song preview**
+- MVP: 10s audio preview starting at `#PREVIEWSTART` if present; otherwise start at `#START` if present, else start at 0.0 seconds (or optionally the first note).
+(USDX editor uses PREVIEWSTART heavily; selection-screen preview behavior is theme-dependent, so we define MVP behavior here.)
+
+## 3.5 Search (MVP)
+
+**User-visible behavior**
+- Song list includes a **Search** action (button or icon in the header). Selecting it opens a Search overlay.
+- Search overlay contains:
+ - `Query` text field
+ - `Scope` selector: `Everywhere` (default), `Artist`, `Album`, `Song`
+ - Results list that updates as the query changes
+- Matching is **case-insensitive substring** match.
+ - `Artist` scope matches only the artist field.
+ - `Album` scope matches only the album field.
+ - `Song` scope matches only the title field.
+ - `Everywhere` matches if any of {artist, album, title} match.
+- Selecting a result behaves exactly like selecting that song in the main list (i.e., proceeds to Assign Singers overlay (Section 10.3).
+
+**Performance and memory constraints (normative for MVP)**
+- Live filtering MUST be implemented as **O(N)** scan over the in-memory song index, where `N` is the number of songs.
+- Input MUST be **debounced** by 150 ms.
+- UI MUST cap displayed results to **50** (or fewer) to avoid render stalls.
+- Store pre-normalized lowercase strings per song (`artistL`, `albumL`, `titleL`) to avoid repeated allocations during filtering.
+- Optional: for `Everywhere`, implementations MAY precompute `allL = artistL + " " + albumL + " " + titleL` per song to reduce per-keystroke checks; this is not required.
+
 # 4. USDX TXT Format Support
 
 ## 4.1 Supported Note Tokens
@@ -731,56 +781,6 @@ This section is normative for MVP UI and navigation on Android TV.
 - **OK/Enter** selects highlighted item.
 - DPAD navigates focus in lists and menus.
 - If a software keyboard is shown (Search), Back closes keyboard first, then overlay.
-
-## 10.2 Song List (Landing Screen)
-
-**Purpose**
-- Always the landing screen (even if library is empty).
-- Displays songs sorted by **Artist -> Album -> Title**.
-- MVP has **no song queue/playlist**; only one song is selected and played at a time.
-
-**Header actions**
-- **Settings** button: opens Settings screen.
-- **Search** button: opens Search overlay (see 10.2.1).
-
-**Empty state**
-- If no songs are indexed, show:
- - No songs found.
- - Hint: Open Settings -> Song Library to add a songs folder.
-
-**Song row display**
-- Minimum: Title, Artist, Album (if present).
-- Icons/flags (if known from index): Duet, Rap, Video, Instrumental available.
-
-**Selection behavior**
-- OK on a song opens **Assign Singers** overlay (10.3).
-
-**Song preview**
-**Song preview**
-- MVP: 10s audio preview starting at `#PREVIEWSTART` if present; otherwise (optional) start at `Song.Start` or the first note.
-(USDX editor uses PREVIEWSTART heavily; selection-screen preview behavior is theme-dependent, so we define MVP behavior here.)
-
-### 10.2.1 Search (MVP)
-
-**User-visible behavior**
-- Song list includes a **Search** action (button or icon in the header). Selecting it opens a Search overlay.
-- Search overlay contains:
- - `Query` text field
- - `Scope` selector: `Everywhere` (default), `Artist`, `Album`, `Song`
- - Results list that updates as the query changes
-- Matching is **case-insensitive substring** match.
- - `Artist` scope matches only the artist field.
- - `Album` scope matches only the album field.
- - `Song` scope matches only the title field.
- - `Everywhere` matches if any of {artist, album, title} match.
-- Selecting a result behaves exactly like selecting that song in the main list (i.e., proceeds to Assign singers flow as specified in Section 7/10 once added).
-
-**Performance and memory constraints (normative for MVP)**
-- Live filtering MUST be implemented as **O(N)** scan over the in-memory song index, where `N` is the number of songs.
-- Input MUST be **debounced** by 150 ms.
-- UI MUST cap displayed results to **50** (or fewer) to avoid render stalls.
-- Store pre-normalized lowercase strings per song (`artistL`, `albumL`, `titleL`) to avoid repeated allocations during filtering.
-- Optional: for `Everywhere`, implementations MAY precompute `allL = artistL + " " + albumL + " " + titleL` per song to reduce per-keystroke checks; this is not required.
 
 ## 10.3 Assign Singers overlay (per-song)
 
