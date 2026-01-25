@@ -181,7 +181,7 @@ Audio/video/instrumental files are validated for existence at load time:
  - `Album` scope matches only the album field.
  - `Song` scope matches only the title field.
  - `Everywhere` matches if any of {artist, album, title} match.
-- Selecting a result behaves exactly like selecting that song in the main list (i.e., proceeds to Assign Singers overlay (Section 10.3).
+- Selecting a result behaves exactly like selecting that song in the main list (i.e., proceeds to Assign Singers overlay, Section 10.3).
 
 **Performance and memory constraints (normative for MVP)**
 - Live filtering MUST be implemented as **O(N)** scan over the in-memory song index, where `N` is the number of songs.
