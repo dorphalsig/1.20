@@ -188,10 +188,29 @@ Singer labels (selection/menu only; not the duet body delimiter):
 **Implementation requirements (MVP, parity-aligned)**
 
 **Header tags**
-- Unknown header tags: **ignore + warn**.
-- Known header tags with malformed values:
- - If the tag is **required for validity** (TITLE/ARTIST/AUDIO-or-MP3/BPM): mark the song **invalid**.
- - If the tag is **optional** (VIDEO, COVER, BACKGROUND, INSTRUMENTAL, etc.): **warn** and treat as absent.
+
+Header processing is best-effort and MUST continue past unknown or non-fatal issues.
+
+- Header lines are read from the top of the file while the line is either empty or starts with `#`.
+- Tag names are case-insensitive; matching MUST be performed on `Uppercase(Trim(TagName))`.
+- Each header line is classified into exactly one of:
+  - **Well-formed tag**: `#NAME:VALUE` where `NAME` is non-empty.
+  - **No separator**: a line starting with `#` that contains no `:`.
+  - **Empty value**: `#NAME:` (value is empty string after trimming).
+
+For each header line:
+- **Well-formed known tag**: parse according to its definition.
+  - If the value is malformed:
+    - If the tag is **required for validity** (TITLE/ARTIST/AUDIO-or-MP3/BPM): mark the song **invalid**.
+    - If the tag is **optional** (VIDEO, COVER, BACKGROUND, INSTRUMENTAL, etc.): **warn** and treat as absent.
+- **Well-formed unknown tag**: **warn** and preserve it in `CustomTags` as `(NAME, VALUE)`.
+- **Empty value** (`#NAME:`): **info/warn** and preserve it in `CustomTags` as `(NAME, "")`.
+- **No separator** (no `:`): **warn** and preserve it in `CustomTags` as `("", CONTENT)` where `CONTENT` is the original line without the leading `#`.
+
+`CustomTags` representation (MVP):
+- `CustomTags` is an ordered list of `(TagName, Content)` pairs.
+- `TagName` may be empty only for the "no separator" case above.
+- The stored strings MUST be exactly the trimmed forms described above (do not reformat).
 
 **Media files**
 - Missing/unresolvable required audio file: **invalid**.
@@ -199,8 +218,39 @@ Singer labels (selection/menu only; not the duet body delimiter):
 - If video fails to open/decode at runtime: fall back to background/visualization without interrupting scoring/playback.
 
 **Body grammar (notes section)**
-- Malformed body lines, unknown note tokens, or missing required parameters (e.g., `-` without a beat): mark song **invalid** (fail load).
-- Lenient skip-and-warn for body lines is NOT parity; it MAY exist as a debug-only mode (off by default) but must be documented as non-parity.
+
+Body parsing is best-effort and MUST continue past unknown or non-fatal issues. The goal is to load as much as possible while preserving deterministic behavior.
+
+Recognized leading tokens (first non-whitespace character of the line):
+- `E` end of song
+- `P` duet track marker (`P1` or `P2`)
+- Note tokens: `:` normal, `*` golden, `F` freestyle, `R` rap, `G` rap-golden
+- Sentence marker: `-`
+- BPM change marker: `B`
+
+Rules:
+- If the token is unrecognized: **warn** with line number and ignore the line.
+- If the token is recognized but required numeric fields cannot be parsed as integers/floats: **invalid** (fatal for that song).
+
+Token-specific behavior:
+- `E`: stop reading the body; the song load continues with validation.
+- `P`:
+  - Accept only `P1` or `P2` (after the `P`).
+  - Any other `P` value: **invalid** (fatal for that song).
+- Note tokens (`:`, `*`, `F`, `R`, `G`):
+  - Parse required fields as integers:
+    - `startBeat` (int)
+    - `duration` (int)
+    - `tone` (int)
+    - `lyricText` is the remainder of the line (may be empty).
+  - Auto-fix: if `duration == 0`, then:
+    - **warn** with line number: "found note with length zero -> converted to FreeStyle"
+    - convert the note token to `F` (freestyle) and keep `duration` unchanged (still zero).
+  - Optional conversion flags (MVP settings-controlled):
+    - If `RapToFreestyle == true` and token is `R`, store it as freestyle instead of rap.
+    - If `OutOfBoundsToFreestyle == true` and the note is before audio start or after audio end (as defined by the timing model), convert it to `F` and warn.
+- `-` (sentence): parse required integer `startBeat` (and, if the song is in "relative" mode, also parse the second integer parameter). If parsing fails: **invalid**.
+- `B` (BPM change): parse required floats `startBeat` and `bpm`. If parsing fails: **invalid**.
 
 **Version/encoding**
 - Unsupported `#VERSION` -> invalid.
