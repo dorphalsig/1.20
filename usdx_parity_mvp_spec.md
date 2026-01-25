@@ -726,7 +726,7 @@ This section is normative for MVP UI and navigation on Android TV.
 
 **Song preview**
 **Song preview**
-- MVP: 510s audio preview starting at `#PREVIEWSTART` if present; otherwise (optional) start at `Song.Start` or the first note.
+- MVP: 10s audio preview starting at `#PREVIEWSTART` if present; otherwise (optional) start at `Song.Start` or the first note.
 (USDX editor uses PREVIEWSTART heavily; selection-screen preview behavior is theme-dependent, so we define MVP behavior here.)
 
 ### 10.2.1 Search (MVP)
@@ -746,7 +746,7 @@ This section is normative for MVP UI and navigation on Android TV.
 
 **Performance and memory constraints (normative for MVP)**
 - Live filtering MUST be implemented as **O(N)** scan over the in-memory song index, where `N` is the number of songs.
-- Input MUST be **debounced** by 120200 ms.
+- Input MUST be **debounced** by 150 ms.
 - UI MUST cap displayed results to **50** (or fewer) to avoid render stalls.
 - Store pre-normalized lowercase strings per song (`artistL`, `albumL`, `titleL`) to avoid repeated allocations during filtering.
 - Optional: for `Everywhere`, implementations MAY precompute `allL = artistL + " " + albumL + " " + titleL` per song to reduce per-keystroke checks; this is not required.
