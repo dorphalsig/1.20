@@ -420,6 +420,17 @@ Per-detection-beat scoring eligibility:
 
 Definition of `toneValid` and how it is produced/transported is normative in Section 8.3 (Pitch Stream Messages).
 
+## 6.2.1 ScoreFactor constants
+
+ScoreFactor is used to weight note durations for score normalization and line bonus calculations.
+
+Normative constants:
+- Freestyle (`F`): ScoreFactor=0
+- Normal (`:`): ScoreFactor=1
+- Golden (`*`): ScoreFactor=2
+- Rap (`R`): ScoreFactor=1
+- RapGolden (`G`): ScoreFactor=2
+
 ## 6.3 Player Level / Tolerance
 
 Each singer/player has a Difficulty setting: Easy, Medium, or Hard.
@@ -464,7 +475,7 @@ Enable/disable (normative):
 - If ON: `MaxSongPoints = 9000` (notes+golden budget) and `MaxLineBonusPool = 1000`.
 
 Per-line max score (normative):
-- Each track computes `TrackScoreValue = sum(Note.Duration * ScoreFactor[noteType])` over all notes in the track (Section 6.5).
+- Each track computes `TrackScoreValue = sum(Note.Duration * ScoreFactor[noteType])` over all notes in the track (Section 6.2.1).
 - Each line/sentence computes `LineScoreValue = sum(Note.Duration * ScoreFactor[noteType])` over its notes.
 - For a line, define the note-score budget available to that line as:
   `MaxLineScore = MaxSongPoints * (LineScoreValue / TrackScoreValue)`
