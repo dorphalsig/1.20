@@ -521,6 +521,11 @@ Validation rules:
 
 ## 8.3 Pitch Stream Messages
 
+Normative MVP rule: phones MUST NOT send any computed scoring, judgement, combo, or rating values.
+Phones send only DSP-derived observations (pitch frames and optional confidence/level telemetry).
+The TV is the single source of truth for timeline alignment, note matching, and scoring.
+
+
  Option A: phone sends `toneValid` + `toneAbs` at 50 fps.
 
 **Implementation requirements (MVP)**
