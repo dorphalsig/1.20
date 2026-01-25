@@ -438,7 +438,6 @@ Implement the exact Range mapping above, per player.
 
 ## 6.4 Octave Normalization
 
-**USDX behavior (authoritative from source)**
 Before comparing to the target note, USDX normalizes the detected pitch **to the closest octave of the target note**, but it does so using the detected pitch-class (`Tone`) and shifting it by 12:
 
 ```
@@ -449,7 +448,7 @@ while (Tone - TargetTone < -6) Tone := Tone + 12
 
 
 **Notes**
-- The detector produces `ToneAbs` (0..NumHalftones-1) and `Tone := ToneAbs mod 12` (pitch class).
+- The pitch detector produces `toneAbs` (0..48) and `tone = toneAbs mod 12` (pitch class).
 - After octave normalization, the value compared/scored is the normalized `Tone` (potentially outside 0..11).
 
 **Parity requirement**
