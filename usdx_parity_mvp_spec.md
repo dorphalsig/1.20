@@ -422,16 +422,19 @@ Definition of `toneValid` and how it is produced/transported is normative in Sec
 
 ## 6.3 Player Level / Tolerance
 
-**USDX behavior (authoritative from source)**
-- Per-player tolerance (normal/medley): `Range := 2 - Ini.PlayerLevel[player]`.
-- Difficulty enum indices: `Easy/Medium/Hard = 0/1/2`.
- - Easy (0) -> Range **2** semitones
- - Medium (1) -> Range **1** semitone
- - Hard (2) -> Range **0** semitones
-- Default per-player `PlayerLevel` is **1 (Medium)**.
+Each singer/player has a Difficulty setting: Easy, Medium, or Hard.
+
+Define the pitch tolerance Range (in semitones) as:
+- Easy: Range = 2
+- Medium: Range = 1
+- Hard: Range = 0
+
+Range is applied only for Normal and Golden notes (Section 6.2). Rap notes ignore pitch difference.
+
+Default Difficulty is Medium for each newly assigned singer.
 
 **Parity requirement**
-Our scoring must implement the exact Range mapping above, per player.
+Implement the exact Range mapping above, per player.
 
 ## 6.4 Octave Normalization
 
