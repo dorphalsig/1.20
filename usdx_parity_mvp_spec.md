@@ -621,7 +621,32 @@ The TV is the single source of truth for timeline alignment, note matching, and 
  - `seq` (uint32, increments by 1 per frame)
  - `tCaptureMs` (phone monotonic ms)
  - `toneValid` (bool) MUST match USDX-style thresholding
- - `toneAbs` (float or null) semitone index in the same domain used by chart pitch values (see scoring section)
+ - `toneAbs` (int or null) absolute semitone index in the same domain used by chart pitch values (see scoring section)
+
+ToneAbs domain (normative):
+- `toneAbs` represents an absolute semitone index in [0..48] (49 halftones).
+- `toneAbs=33` corresponds to A4 = 440.0 Hz.
+- `toneAbs=0` corresponds to C2 = 65.4064 Hz.
+- Mapping from `toneAbs` to frequency is:
+  `f_hz(toneAbs) = 440.0 * 2^((toneAbs - 33)/12)`
+
+Phone-side computation (normative):
+- If the phone pitch tracker produces an estimated fundamental frequency `f0_hz` (Hz):
+  - If `f0_hz <= 0` or unvoiced -> `toneValid=false` and `toneAbs=null`.
+  - Else compute:
+    - `toneAbs_raw = 33 + 12 * log2(f0_hz / 440.0)`
+    - `toneAbs = clamp(round(toneAbs_raw), 0, 48)`
+- If the phone pitch tracker produces a semitone index directly, it MUST be converted/clamped to the same [0..48] domain.
+
+Voicing/thresholding (normative):
+- The TV selects a noise threshold via `thresholdIndex` (0..7) and sends it in `assignPlayer`/`assignSinger`.
+- The phone MUST compute `toneValid` using the following thresholds on normalized peak amplitude `maxAmp` (0..1):
+  - thresholdValueByIndex = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40, 0.60]
+  - `toneValid = (maxAmp >= thresholdValueByIndex[thresholdIndex]) AND (pitch_estimate_succeeded)`
+- When `toneValid=false`, the phone MUST set `toneAbs=null` (or omit it).
+
+Receiver semantics (normative):
+- The receiver MUST NOT interpret `toneAbs=0` as silence. Silence/unvoiced is represented only by `toneValid=false`.
 - Fields (optional but recommended):
  - `maxAmp` (float 0..1) debugging/telemetry only
  - `thresholdIndex` (int 0..7) debugging only
