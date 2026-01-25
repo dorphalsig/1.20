@@ -660,9 +660,7 @@ These defaults are chosen to be playable on typical home WiFi while keeping perc
 
 ## 9.2 Auto Mic Delay Adjust (ON by default)
 
-**Parity anchor**
-USDX applies mic delay only in detection/scoring beat computation:
-`CurrentBeatD = floor(-0.5 + GetMidBeat(time - (StartTime + MicDelay)/1000))`.
+Mic delay is applied only to scoring sample timing by shifting the scoring sample time by `micDelayMs` (see Section 5.1, `CurrentBeatD`).
 
 **Auto-adjust algorithm (MVP-defined; ON by default)**
 - Maintain per-phone `effectiveMicDelayMs` in [0, 400].
