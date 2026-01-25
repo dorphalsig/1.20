@@ -406,17 +406,19 @@ Boundary conventions:
 
 ## 6.2 Note Types
 
-**USDX behavior (authoritative from source)**
-- Freestyle notes are explicitly excluded from active note detection and therefore score nothing.
-- Scoring is gated by `CurrentSound.ToneValid` (voice above threshold and pitch analysis ran).
-- Rap/RapGolden treat pitch as automatically hit (timing + ToneValid only): the pitch-difference check ORs rap types.
+Note-type tokens in the TXT file:
+- Freestyle: `F`
+- Normal: `:`
+- Golden: `*`
+- Rap: `R`
+- RapGolden: `G`
 
-**Rap voice present threshold (ToneValid)**
-- ToneValid becomes true only if `MaxVolume >= Threshold` where MaxVolume is the maximum absolute amplitude over the first 1024 samples of the analysis buffer.
-- Threshold values are fixed table `IThresholdVals = (0.05,0.10,0.15,0.20,0.25,0.30,0.40,0.60)` selected by `Ini.ThresholdIndex`.
+Per-detection-beat scoring eligibility:
+- Freestyle notes (`F`) are excluded from hit detection and contribute 0 points.
+- For Normal (`:`) and Golden (`*`) notes: a detection beat can score only if `toneValid=true` and pitch is within the tolerance Range after octave normalization (Sections 6.3-6.4).
+- For Rap (`R`) and RapGolden (`G`) notes: a detection beat can score if `toneValid=true`; pitch difference is ignored (presence-only).
 
-
- Freestyle: no points. Rap: presence-based (toneValid), pitch ignored. Normal/Golden: toneValid gate + pitch/tolerance.
+Definition of `toneValid` and how it is produced/transported is normative in Section 8.3 (Pitch Stream Messages).
 
 ## 6.3 Player Level / Tolerance
 
