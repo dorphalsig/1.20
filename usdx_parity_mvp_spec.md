@@ -94,12 +94,37 @@ TV is authoritative for: song timeline, beats, scoring, rendering. Phones are au
 
 USDX scans for **all `.txt` files recursively** under configured song folders. Each `.txt` is treated as a distinct song entry, even if multiple `.txt` files exist in the same folder.
 
-**Validation ("analyse")**
-A song is accepted into the library only if `Song.Analyse` succeeds; otherwise it is discarded.
+**Validation (song acceptance)**
+A song entry is accepted into the library if and only if all of the following checks pass. If any check fails, the song entry MUST be rejected and a diagnostic MUST be emitted (see Section 4.3).
 
-In header parsing, USDX treats the following as required:
-- `#TITLE`, `#ARTIST`, audio filename (`#AUDIO` for format >= 1.0.0 or `#MP3`), and `#BPM`.
-It tracks these via a bitmask (`Done` must equal 15).
+1) Required header tags present
+- `#TITLE` and `#ARTIST` MUST be present and non-empty.
+- `#BPM` MUST be present and parseable as a positive floating-point number.
+- A required audio reference tag MUST be present:
+  - If `#VERSION` is absent or < 1.0.0, `#MP3` MUST be present and non-empty.
+  - If `#VERSION` is >= 1.0.0, `#AUDIO` MUST be present and non-empty.
+  (Audio tag precedence and resolution is defined in Section 4.2.)
+
+2) Required audio file exists
+- The audio filename resolved by the rules in Section 4.2 MUST exist in the same directory as the `.txt` (unless the resolved value is an absolute URI supported by the platform; if absolute URIs are not supported in MVP, treat them as missing).
+
+3) Notes section parses without fatal errors
+- The notes/body section MUST be parsed according to Section 4.1 and Section 4.3.
+- Unknown tokens and recoverable grammar issues MUST be handled per Section 4.3 (warn and continue).
+- Any fatal numeric parse error for a recognized token MUST reject the song entry.
+
+4) Each track has at least one non-empty sentence after cleanup
+After body parsing completes, validation MUST ensure each parsed track (single track, or both tracks for duet) contains singable structure:
+
+- The track MUST contain at least one sentence delimiter (`-`), resulting in at least one sentence/line object.
+  - If a track contains zero sentence delimiters, reject with reason `ERROR_CORRUPT_SONG_NO_BREAKS`.
+
+- Empty sentences MUST be removed. An "empty sentence" is a sentence/line with zero note events after parsing (i.e., no `:`, `*`, `F`, `R`, `G` notes).
+  - This cleanup is performed before the "no notes" check.
+
+- After removing empty sentences, the track MUST contain at least one remaining sentence/line.
+  - If a track contains zero sentences after cleanup, reject with reason `ERROR_CORRUPT_SONG_NO_NOTES`.
+
 
 **Missing files**
 Audio/video/instrumental files are validated for existence at load time:
