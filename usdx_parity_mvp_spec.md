@@ -36,8 +36,64 @@ Conventions:
 
 # Table of Contents
 
-TBD (auto-generated in Google Docs/Word).
-
+- 1. Product Contract
+  - 1.1 Locked Product Decisions
+  - 1.2 Definition of Done
+- 2. Architecture Overview
+  - 2.1 Components
+  - 2.2 Data Responsibilities
+- 3. Songs and Library
+  - 3.1 Storage Access
+  - 3.2 Discovery and Validation Rules
+  - 3.3 Index Fields (Functional)
+  - 3.4 Song List (Landing Screen)
+  - 3.5 Search (MVP)
+- 4. USDX TXT Format Support
+  - 4.1 Supported Note Tokens
+  - 4.2 Supported Header Tags and Semantics
+  - 4.3 Error Handling
+- 5. Timing and Beat Model (Parity-Critical)
+  - 5.1 Authoritative Beat Definitions
+  - 5.2 Beat-Time Conversion
+  - 5.3 START/END/NOTESGAP
+- 6. Scoring (Parity-Critical)
+  - 6.1 Scoring Overview
+  - 6.2 Note Types
+  - 6.2.1 ScoreFactor constants
+  - 6.3 Player Level / Tolerance
+  - 6.4 Octave Normalization
+  - 6.5 Line Bonus
+  - 6.6 Rounding and Display
+- 7. Multiplayer, Pairing, and Session Lifecycle
+  - 7.1 Session States
+  - 7.2 Pairing UX (TV)
+  - 7.3 Pairing UX (Phone)
+  - 7.4 Disconnect/Reconnect
+- 8. Network Protocol
+  - 8.1 Transport
+  - 8.2 Control Messages
+  - 8.3 Pitch Stream Messages
+  - 8.4 Versioning and Compatibility
+- 9. Time Sync, Jitter Handling, and Auto Delay
+  - 9.1 Defaults
+  - 9.2 Auto Mic Delay Adjust (ON by default)
+- 10. UI Screens and Flows
+  - 10.1 Global navigation and input
+  - 10.3 Assign Singers overlay (per-song)
+  - 10.4 Settings Screen
+  - 10.5 Singing Screen
+  - 10.6 Results and Leaderboard
+- 11. Parity Test Suite
+  - 11.1 Golden Parsing Fixtures
+  - 11.2 Golden Scoring Fixtures
+  - 11.3 Live Network Tests
+  - 11.4 Test Report Format
+- Appendix A: Supported Tags Reference
+- Appendix B: Protocol Schemas
+- Appendix C: Fixture Inventory
+  - C.1 gangnamstyle-normal-5s (protocol + ordered frames)
+  - C.2 gangnamstyle-rap-5s (unvoiced frames + large batches)
+  - C.3 Future scoring fixtures (reserved)
 
 
 # 1. Product Contract
