@@ -499,27 +499,25 @@ Implement sentence-end scoring and line bonus exactly as above, including the `-
 
 ## 6.6 Rounding and Display
 
-**USDX behavior (authoritative from source)**
+Per-beat note scoring (normative):
+- Let `MaxSongPoints` be as defined in Section 6.5 (10000 if LineBonusEnabled=OFF; 9000 if ON).
+- Let `TrackScoreValue` be as defined in Section 6.5.
+- For each detection beat where the active note is considered hit (Section 6.2):
+  - `CurBeatPoints = (MaxSongPoints / TrackScoreValue) * ScoreFactor[noteType]`
+  - If noteType is Normal or Rap: add to `Player.Score`
+  - If noteType is Golden or RapGolden: add to `Player.ScoreGolden`
 
-**Per-beat note scoring**
-When a beat is hit, points awarded are:
-- `CurNotePoints := (MaxSongPoints / Track.ScoreValue) * ScoreFactor[noteType]`
-- Added each detection beat for the active note to:
- - `Player.Score` for Normal/Rap
- - `Player.ScoreGolden` for Golden/RapGolden
+Line score rounding (normative):
+- `Player.ScoreLineInt = floor(round(Player.ScoreLine) / 10) * 10`
 
+Tens rounding (normative):
+- `ScoreInt = round(Player.Score/10) * 10`
+- `ScoreGoldenInt` is rounded to tens in the opposite direction to ensure the sum cannot exceed 10000 due to .5 rounding:
+  - If `ScoreInt < Player.Score` then `ScoreGoldenInt = ceil(Player.ScoreGolden/10) * 10`
+  - Else `ScoreGoldenInt = floor(Player.ScoreGolden/10) * 10`
+- `ScoreTotalInt = ScoreInt + ScoreGoldenInt + Player.ScoreLineInt`
 
-`MaxSongPoints` is 10000 if line bonus is off, otherwise 9000.
-
-**Tens rounding**
-- `ScoreInt := round(Score/10)*10`
-- `ScoreGoldenInt` is rounded to tens in the opposite direction to ensure `ScoreInt + ScoreGoldenInt` cannot exceed 10000 due to .5 rounding edge cases:
- - If `ScoreInt < Score` then `ScoreGoldenInt := ceil(ScoreGolden/10)*10`
- - Else `ScoreGoldenInt := floor(ScoreGolden/10)*10`
-- `ScoreTotalInt := ScoreInt + ScoreGoldenInt + ScoreLineInt`
-
-
-**Parity requirement**
+Parity requirement:
 Use the exact rounding rules above and compute total as shown.
 
 # 7. Multiplayer, Pairing, and Session Lifecycle
