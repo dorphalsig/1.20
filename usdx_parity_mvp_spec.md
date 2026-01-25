@@ -268,7 +268,7 @@ Supported tokens:
 ### Per-note fields
 For note tokens (`:`, `*`, `F`, `R`, `G`) USDX parses:
 `<token> <startBeat> <duration> <tone> <lyricText...>`
-- `startBeat` and `duration` are integers from file, then multiplied by `Mult` (1) and offset by any relative mode shift; `MultBPM` scaling is applied via BPM, not via these fields.
+- `startBeat` and `duration` are integers in chart beat units. They are not scaled by BPM; BPM affects only the beat->time conversion (Section 5.1). Any legacy relative-mode shift (format < 1.0.0) is applied separately (Section 4.2).
 - `tone` is an integer note tone as stored in the file.
 - `lyricText` is the remainder of the line after the numeric fields.
 
@@ -290,7 +290,7 @@ For note tokens (`:`, `*`, `F`, `R`, `G`) USDX parses:
  - Audio file must exist, otherwise load fails.
 
 ### Timing/alignment tags
-- `#GAP:` millisecond offset used as `LyricsState.StartTime` and for beat/time conversions.
+- `#GAP:` millisecond offset used as the lyrics/audio time origin for beat/time conversions (see Section 5.1).
 - `#START:` seconds; initial playback/lyrics time offset.
 - `#END:` milliseconds; sets lyrics total time if present.
 - `#PREVIEWSTART:` seconds; used by editor and can be used for song preview.
