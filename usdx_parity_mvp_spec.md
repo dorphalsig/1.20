@@ -92,18 +92,18 @@ TV is authoritative for: song timeline, beats, scoring, rendering. Phones are au
 
 ## 3.2 Discovery and Validation Rules
 
-USDX scans for **all `.txt` files recursively** under configured song folders. Each `.txt` is treated as a distinct song entry, even if multiple `.txt` files exist in the same folder. (`src/base/USongs.pas` L302-L331)
+USDX scans for **all `.txt` files recursively** under configured song folders. Each `.txt` is treated as a distinct song entry, even if multiple `.txt` files exist in the same folder.
 
 **Validation ("analyse")**
-A song is accepted into the library only if `Song.Analyse` succeeds; otherwise it is discarded. (`src/base/USongs.pas` L318-L329)
+A song is accepted into the library only if `Song.Analyse` succeeds; otherwise it is discarded.
 
 In header parsing, USDX treats the following as required:
 - `#TITLE`, `#ARTIST`, audio filename (`#AUDIO` for format >= 1.0.0 or `#MP3`), and `#BPM`.
-It tracks these via a bitmask (`Done` must equal 15). (`src/base/USong.pas` L1158-L1204 and L1445-L1460)
+It tracks these via a bitmask (`Done` must equal 15).
 
 **Missing files**
 Audio/video/instrumental files are validated for existence at load time:
-- Missing required audio file -> load fails. (`src/base/USong.pas` `CheckAndSetAudioFile`, called from header parsing)
+- Missing required audio file -> load fails.
 - Missing optional video/instrumental -> logged; song can still load (but feature disabled).
 
 **MVP parity requirements**
@@ -121,7 +121,7 @@ Audio/video/instrumental files are validated for existence at load time:
 
 ### Note/body line tokens (USDX parser)
 
-USDX reads the song body line-by-line and interprets the first character token. (`src/base/USong.pas` LoadOpenedSong, L705-L870)
+USDX reads the song body line-by-line and interprets the first character token.
 
 Supported tokens:
 - `:` Normal note
@@ -137,51 +137,51 @@ Supported tokens:
 ### Per-note fields
 For note tokens (`:`, `*`, `F`, `R`, `G`) USDX parses:
 `<token> <startBeat> <duration> <tone> <lyricText...>`
-- `startBeat` and `duration` are integers from file, then multiplied by `Mult` (1) and offset by any relative mode shift; `MultBPM` scaling is applied via BPM, not via these fields. (`src/base/USong.pas` L820)
+- `startBeat` and `duration` are integers from file, then multiplied by `Mult` (1) and offset by any relative mode shift; `MultBPM` scaling is applied via BPM, not via these fields.
 - `tone` is an integer note tone as stored in the file.
 - `lyricText` is the remainder of the line after the numeric fields.
 
 ### Duet structure
-- If the first non-empty body line begins with `P`, USDX marks the song as duet (`isDuet = true`) and creates two tracks. (`src/base/USong.pas` L705-L724)
-- A `P1`/`P2` marker sets the active track (0/1). (`src/base/USong.pas` L872-L913)
+- If the first non-empty body line begins with `P`, USDX marks the song as duet (`isDuet = true`) and creates two tracks.
+- A `P1`/`P2` marker sets the active track (0/1).
 - Notes and `-` sentence breaks are assigned to the current active track.
 - The file ends with a single `E` after all notes.
 
 ## 4.2 Supported Header Tags and Semantics
 
 ### Required tags
-- `#TITLE:` song title (UTF-8 for format >= 1.0.0). (`src/base/USong.pas` L1148-L1156)
-- `#ARTIST:` song artist. (`src/base/USong.pas` L1158-L1166)
-- `#BPM:` base BPM. USDX loads as `BPM_internal = BPM_file * 4`. (`src/base/USong.pas` L1184-L1194)
+- `#TITLE:` song title (UTF-8 for format >= 1.0.0).
+- `#ARTIST:` song artist.
+- `#BPM:` base BPM. USDX loads as `BPM_internal = BPM_file * 4`.
 - Audio filename:
- - Format 1.0.0: `#AUDIO:` preferred; if present it overrides `#MP3:`. (`src/base/USong.pas` L1170-L1183)
- - Older formats: `#MP3:` is used. (`src/base/USong.pas` L1185-L1183)
- - Audio file must exist, otherwise load fails. (`src/base/USong.pas` `CheckAndSetAudioFile`)
+ - Format 1.0.0: `#AUDIO:` preferred; if present it overrides `#MP3:`.
+ - Older formats: `#MP3:` is used.
+ - Audio file must exist, otherwise load fails.
 
 ### Timing/alignment tags
-- `#GAP:` millisecond offset used as `LyricsState.StartTime` and for beat/time conversions. (`src/base/USong.pas` L1226-L1232; `src/screens/controllers/UScreenSingController.pas` L1204-L1214)
-- `#START:` seconds; initial playback/lyrics time offset. (`src/base/USong.pas` L1275-L1280)
-- `#END:` milliseconds; sets lyrics total time if present. (`src/base/USong.pas` L1282-L1287)
-- `#PREVIEWSTART:` seconds; used by editor and can be used for song preview. (`src/base/USong.pas` L1346+)
+- `#GAP:` millisecond offset used as `LyricsState.StartTime` and for beat/time conversions.
+- `#START:` seconds; initial playback/lyrics time offset.
+- `#END:` milliseconds; sets lyrics total time if present.
+- `#PREVIEWSTART:` seconds; used by editor and can be used for song preview.
 
 ### Media tags
-- `#VIDEO:` video filename. (`src/base/USong.pas` L1234+)
-- `#VIDEOGAP:` seconds offset added to audio position when positioning video. (`src/base/UFiles.pas`; used in `src/screens/controllers/UScreenSingController.pas` L1134-L1137)
-- `#INSTRUMENTAL:` alternate audio file used for instrumental/karaoke mode. (`src/base/UFiles.pas` L157; `src/media/UAudioPlaybackBase.pas` L118-L149)
-- `#COVER:` image; `#BACKGROUND:` image; with fallbacks `*[CO].jpg` and `*[BG].jpg` if unset. (`src/base/USong.pas` L1451-L1458)
+- `#VIDEO:` video filename.
+- `#VIDEOGAP:` seconds offset added to audio position when positioning video.
+- `#INSTRUMENTAL:` alternate audio file used for instrumental/karaoke mode.
+- `#COVER:` image; `#BACKGROUND:` image; with fallbacks `*[CO].jpg` and `*[BG].jpg` if unset.
 
 ### Duet tags
 Singer labels (selection/menu only; not the duet body delimiter):
-- `#P1:` and `#P2:` set duet singer names. (`src/base/USong.pas` L1408-L1434)
-- Legacy `#DUETSINGERP1:` / `#DUETSINGERP2:` are only honored for format <1.0.0; ignored for 1.0.0. (`src/base/USong.pas` L1381-L1407)
+- `#P1:` and `#P2:` set duet singer names.
+- Legacy `#DUETSINGERP1:` / `#DUETSINGERP2:` are only honored for format <1.0.0; ignored for 1.0.0.
 
 ### Legacy/deprecated tags
-- `#ENCODING:` ignored for format >= 1.0.0 (UTF-8 is forced); honored for older formats. (`src/base/USong.pas` L1102-L1136)
-- `#RESOLUTION:` and `#NOTESGAP:` honored only for format <1.0.0; ignored otherwise. (`src/base/USong.pas` L1293-L1326)
-- `#RELATIVE:` honored only for format <1.0.0; for 1.0.0 the song is rejected (not loaded). (`src/base/USong.pas` L1328-L1344)
+- `#ENCODING:` ignored for format >= 1.0.0 (UTF-8 is forced); honored for older formats.
+- `#RESOLUTION:` and `#NOTESGAP:` honored only for format <1.0.0; ignored otherwise.
+- `#RELATIVE:` honored only for format <1.0.0; for 1.0.0 the song is rejected (not loaded).
 
 ### In-song BPM changes
-- Body lines starting with `B` define variable BPM segments: `B <startBeat> <bpm>`. (`src/base/USong.pas` L833-L839)
+- Body lines starting with `B` define variable BPM segments: `B <startBeat> <bpm>`.
 
 ## 4.3 Error Handling
 
@@ -272,9 +272,9 @@ Token-specific behavior:
 
 **Internal beat unit (parity-critical)**
 USDX scales the UltraStar files beat grid by **4** at load time:
-- `MultBPM := 4` (multiply beat-count of note by 4). (`src/base/USong.pas` L675)
-- Header `#BPM` is loaded as `BPM_internal = BPM_file * Mult * MultBPM` with `Mult = 1`. (`src/base/USong.pas` L1184-L1194)
-- In-song BPM changes (`B` lines) are loaded the same way: `BPM_internal = BPM_file * Mult * MultBPM`, and the `StartBeat` is also shifted by any track-relative offset. (`src/base/USong.pas` L834-L839)
+- `MultBPM := 4` (multiply beat-count of note by 4).
+- Header `#BPM` is loaded as `BPM_internal = BPM_file * Mult * MultBPM` with `Mult = 1`.
+- In-song BPM changes (`B` lines) are loaded the same way: `BPM_internal = BPM_file * Mult * MultBPM`, and the `StartBeat` is also shifted by any track-relative offset.
 
 **Implication for our implementation**
 Treat all parsed note `StartBeat` and `Duration` values (and any `B` segment `StartBeat`) as being in **internal beats**, where:
@@ -282,7 +282,7 @@ Treat all parsed note `StartBeat` and `Duration` values (and any `B` segment `St
 - All beat/time conversions (GetMidBeat/GetTimeFromBeat) operate on internal beats and internal BPM.
 
 **GetMidBeat(TimeSec) -> MidBeat (float)**
-Defined in `GetMidBeat()` / `GetMidBeatSub()` (`src/base/UNote.pas` L208-L241):
+Defined in `GetMidBeat()` / `GetMidBeatSub()`:
 - Static BPM: `MidBeat = TimeSec * BPM0 / 60`
 - Variable BPM: walk BPM segments in order and consume time:
  - For each segment `i`, let `segBeats = StartBeat[i+1] - StartBeat[i]` (or for last segment)
@@ -291,7 +291,7 @@ Defined in `GetMidBeat()` / `GetMidBeatSub()` (`src/base/UNote.pas` L208-L241):
 Callers then apply `floor()` for current beat (highlight/click) or other rounding rules.
 
 **GetTimeFromBeat(BeatInt) -> TimeSec**
-Defined in `GetTimeFromBeat()` (`src/base/UNote.pas` L243-L300):
+Defined in `GetTimeFromBeat()`:
 - Static BPM: `TimeSec = GAPms/1000 + BeatInt * (60 / BPM0)`
 - Variable BPM:
  - `TimeSec := GAPms/1000`
@@ -300,28 +300,28 @@ Defined in `GetTimeFromBeat()` (`src/base/UNote.pas` L243-L300):
  - Else add remaining beats in this segment: `(BeatInt-StartBeat[i]) * (60 / BPM[i])` and stop.
 
 **Boundary rules**
-- `GetMidBeat()` returns a float; **USDX uses `floor(MidBeat)`** for highlight/click beats. (`src/base/UBeatTimer.pas` L290-L293)
-- Detection/scoring beat uses `floor(-0.5 + MidBeatD)` (see 5.1). (`src/base/UBeatTimer.pas` L294-L297)
+- `GetMidBeat()` returns a float; **USDX uses `floor(MidBeat)`** for highlight/click beats.
+- Detection/scoring beat uses `floor(-0.5 + MidBeatD)` (see 5.1).
 
 ## 5.3 START/END/NOTESGAP
 
 **START**
-- Parsed from `#START:` as a float seconds value stored in `Song.Start`. (`src/base/USong.pas` L1275-L1280)
-- At song load (sing screen), lyrics timer current time is initialized to `Song.Start` for normal mode. (`src/screens/controllers/UScreenSingController.pas` L1204-L1214)
-- Audio playback is positioned to `LyricsState.GetCurrentTime()` (which was set to `Song.Start`). (`src/screens/controllers/UScreenSingController.pas` L883-L891)
-- Video start position is set to `VideoGAP + Song.Start` (normal mode). (`src/screens/controllers/UScreenSingController.pas` L1134-L1137)
+- Parsed from `#START:` as a float seconds value stored in `Song.Start`.
+- At song load (sing screen), lyrics timer current time is initialized to `Song.Start` for normal mode.
+- Audio playback is positioned to `LyricsState.GetCurrentTime()` (which was set to `Song.Start`).
+- Video start position is set to `VideoGAP + Song.Start` (normal mode).
 
 **END**
-- Parsed from `#END:` as an integer stored in `Song.Finish` (milliseconds). (`src/base/USong.pas` L1282-L1287)
-- If `Finish > 0`, lyrics timer `TotalTime` is set to `Finish/1000`; otherwise it uses the audio length. (`src/screens/controllers/UScreenSingController.pas` L1208-L1217 and L893-L901)
+- Parsed from `#END:` as an integer stored in `Song.Finish` (milliseconds).
+- If `Finish > 0`, lyrics timer `TotalTime` is set to `Finish/1000`; otherwise it uses the audio length.
 
 **NOTESGAP and RESOLUTION**
-- These headers are only honored for **format versions < 1.0.0**; for 1.0.0 they are ignored with an info log. (`src/base/USong.pas` L1293-L1326)
-- When honored, `NOTESGAP` is used for beat-click scheduling and editor/drawing beat delimiter alignment (not scoring). Example: beat click checks `(CurrentBeatC + Resolution + NotesGAP) mod Resolution`. (`src/base/UBeatTimer.pas` + drawing helpers; note: gameplay scoring uses `CurrentBeatD` and does not use NotesGAP/Resolution.)
+- These headers are only honored for **format versions < 1.0.0**; for 1.0.0 they are ignored with an info log.
+- When honored, `NOTESGAP` is used for beat-click scheduling and editor/drawing beat delimiter alignment (not scoring). Example: beat click checks `(CurrentBeatC + Resolution + NotesGAP) mod Resolution`.
 
 **Gameplay-visible behaviors that depend on START/END**
-- **Restart song** resets scores and seeks to `Song.Start` (and sets video to `VideoGAP + Song.Start`). (`src/screens/controllers/UScreenSingController.pas` L240-L289)
-- **Skip intro** (key `S`) seeks to **5 seconds before** the first upcoming line start if the first line is >6 seconds ahead (duet uses the earlier of the two tracks). (`src/screens/controllers/UScreenSingController.pas` L412-L427)
+- **Restart song** resets scores and seeks to `Song.Start` (and sets video to `VideoGAP + Song.Start`).
+- **Skip intro** (key `S`) seeks to **5 seconds before** the first upcoming line start if the first line is >6 seconds ahead (duet uses the earlier of the two tracks).
 
 # 6. Scoring (Parity-Critical)
 
@@ -332,13 +332,13 @@ Defined in `GetTimeFromBeat()` (`src/base/UNote.pas` L243-L300):
 ## 6.2 Note Types
 
 **USDX behavior (authoritative from source)**
-- Freestyle notes are explicitly excluded from active note detection and therefore score nothing. (`src/base/UNote.pas` L525-L529)
-- Scoring is gated by `CurrentSound.ToneValid` (voice above threshold and pitch analysis ran). (`src/base/UNote.pas` L559-L560)
-- Rap/RapGolden treat pitch as automatically hit (timing + ToneValid only): the pitch-difference check ORs rap types. (`src/base/UNote.pas` L589-L591)
+- Freestyle notes are explicitly excluded from active note detection and therefore score nothing.
+- Scoring is gated by `CurrentSound.ToneValid` (voice above threshold and pitch analysis ran).
+- Rap/RapGolden treat pitch as automatically hit (timing + ToneValid only): the pitch-difference check ORs rap types.
 
 **Rap voice present threshold (ToneValid)**
-- ToneValid becomes true only if `MaxVolume >= Threshold` where MaxVolume is the maximum absolute amplitude over the first 1024 samples of the analysis buffer. (`src/base/URecord.pas` L375-L397)
-- Threshold values are fixed table `IThresholdVals = (0.05,0.10,0.15,0.20,0.25,0.30,0.40,0.60)` selected by `Ini.ThresholdIndex`. (`src/base/UIni.pas` L388-L389)
+- ToneValid becomes true only if `MaxVolume >= Threshold` where MaxVolume is the maximum absolute amplitude over the first 1024 samples of the analysis buffer.
+- Threshold values are fixed table `IThresholdVals = (0.05,0.10,0.15,0.20,0.25,0.30,0.40,0.60)` selected by `Ini.ThresholdIndex`.
 
 
  Freestyle: no points. Rap: presence-based (toneValid), pitch ignored. Normal/Golden: toneValid gate + pitch/tolerance.
@@ -346,12 +346,12 @@ Defined in `GetTimeFromBeat()` (`src/base/UNote.pas` L243-L300):
 ## 6.3 Player Level / Tolerance
 
 **USDX behavior (authoritative from source)**
-- Per-player tolerance (normal/medley): `Range := 2 - Ini.PlayerLevel[player]`. (`src/base/UNote.pas` L582-L587)
-- Difficulty enum indices: `Easy/Medium/Hard = 0/1/2`. (`src/base/UIni.pas` L347)
+- Per-player tolerance (normal/medley): `Range := 2 - Ini.PlayerLevel[player]`.
+- Difficulty enum indices: `Easy/Medium/Hard = 0/1/2`.
  - Easy (0) -> Range **2** semitones
  - Medium (1) -> Range **1** semitone
  - Hard (2) -> Range **0** semitones
-- Default per-player `PlayerLevel` is **1 (Medium)**. (`src/base/UIni.pas` L1435-L1447)
+- Default per-player `PlayerLevel` is **1 (Medium)**.
 
 **Parity requirement**
 Our scoring must implement the exact Range mapping above, per player.
@@ -366,10 +366,10 @@ while (Tone - TargetTone > 6) Tone := Tone - 12
 while (Tone - TargetTone < -6) Tone := Tone + 12
 ```
 
-(`src/base/UNote.pas` L575-L580)
+
 
 **Notes**
-- The detector produces `ToneAbs` (0..NumHalftones-1) and `Tone := ToneAbs mod 12` (pitch class). (`src/base/URecord.pas` L441-L442)
+- The detector produces `ToneAbs` (0..NumHalftones-1) and `Tone := ToneAbs mod 12` (pitch class).
 - After octave normalization, the value compared/scored is the normalized `Tone` (potentially outside 0..11).
 
 **Parity requirement**
@@ -380,17 +380,17 @@ Implement octave normalization exactly as above (shift detected `tone` by 12 unt
 **USDX behavior (authoritative from source)**
 
 **When line bonus is enabled**
-- Line bonus is enabled when `Ini.LineBonus > 0`. (`src/screens/controllers/UScreenSingController.pas` L1750-L1772)
+- Line bonus is enabled when `Ini.LineBonus > 0`.
 - The total score budget is split:
  - If line bonus OFF: `MaxSongScore = 10000`
- - If line bonus ON: `MaxSongScore = 10000 - 1000` (notes+golden use 9000; line bonus uses 1000) (`src/base/UNote.pas` L598-L603; `src/screens/controllers/UScreenSingController.pas` L1720-L1724)
+ - If line bonus ON: `MaxSongScore = 10000 - 1000` (notes+golden use 9000; line bonus uses 1000)
 
 **Per-line max score**
 For a sentence/line, USDX computes the maximum points available for that line (from notes budget) as:
-- `MaxLineScore = MaxSongScore * (Line.ScoreValue / Song.Track.ScoreValue)` (`src/screens/controllers/UScreenSingController.pas` L1729-L1729)
+- `MaxLineScore = MaxSongScore * (Line.ScoreValue / Song.Track.ScoreValue)`
 
 `Line.ScoreValue` and `Song.Track.ScoreValue` are computed while parsing notes as:
-- `ScoreValue += Note.Duration * ScoreFactor[noteType]` (freestyle contributes 0). (`src/base/USong.pas` L1532-L1537; ScoreFactor in `src/base/UMusic.pas` L44-L47)
+- `ScoreValue += Note.Duration * ScoreFactor[noteType]` (freestyle contributes 0).
 
 **Line perfection**
 At sentence end:
@@ -398,16 +398,16 @@ At sentence end:
 - If `MaxLineScore <= 2` then `LinePerfection = 1`
 - Else `LinePerfection = LineScore / (MaxLineScore - 2)`
 - Clamp `LinePerfection` to [0..1]
-(`src/screens/controllers/UScreenSingController.pas` L1740-L1749)
+
 
 **Line bonus distribution**
 - Each **non-empty** line gets an equal slice of the 1000-point line bonus pool:
  - `LineBonusPerLine = 1000 / (NumLines - NumEmptySentences)`
- - A line is empty if `Line.ScoreValue = 0`. (`src/screens/controllers/UScreenSingController.pas` L1255-L1278)
-- Player receives `LineBonusPerLine * LinePerfection`, accumulated into `Player.ScoreLine`. (`src/screens/controllers/UScreenSingController.pas` L1753-L1765)
+ - A line is empty if `Line.ScoreValue = 0`.
+- Player receives `LineBonusPerLine * LinePerfection`, accumulated into `Player.ScoreLine`.
 
 **Rounding**
-- `Player.ScoreLineInt := Floor(Round(Player.ScoreLine) / 10) * 10` (line score is rounded then floored-to-tens). (`src/screens/controllers/UScreenSingController.pas` L1761-L1763)
+- `Player.ScoreLineInt := Floor(Round(Player.ScoreLine) / 10) * 10` (line score is rounded then floored-to-tens).
 
 **Parity requirement**
 Implement sentence-end scoring and line bonus exactly as above, including the `-2` forgiveness and the line-bonus rounding rule.
@@ -422,9 +422,9 @@ When a beat is hit, points awarded are:
 - Added each detection beat for the active note to:
  - `Player.Score` for Normal/Rap
  - `Player.ScoreGolden` for Golden/RapGolden
-(`src/base/UNote.pas` L604-L619)
 
-`MaxSongPoints` is 10000 if line bonus is off, otherwise 9000. (`src/base/UNote.pas` L598-L603)
+
+`MaxSongPoints` is 10000 if line bonus is off, otherwise 9000.
 
 **Tens rounding**
 - `ScoreInt := round(Score/10)*10`
@@ -432,7 +432,7 @@ When a beat is hit, points awarded are:
  - If `ScoreInt < Score` then `ScoreGoldenInt := ceil(ScoreGolden/10)*10`
  - Else `ScoreGoldenInt := floor(ScoreGolden/10)*10`
 - `ScoreTotalInt := ScoreInt + ScoreGoldenInt + ScoreLineInt`
-(`src/base/UNote.pas` L624-L640)
+
 
 **Parity requirement**
 Use the exact rounding rules above and compute total as shown.
@@ -582,7 +582,7 @@ These defaults are chosen to be playable on typical home WiFi while keeping perc
 
 **Parity anchor**
 USDX applies mic delay only in detection/scoring beat computation:
-`CurrentBeatD = floor(-0.5 + GetMidBeat(time - (StartTime + MicDelay)/1000))`. (`src/base/UBeatTimer.pas` L294-L297)
+`CurrentBeatD = floor(-0.5 + GetMidBeat(time - (StartTime + MicDelay)/1000))`.
 
 **Auto-adjust algorithm (MVP-defined; ON by default)**
 - Maintain per-phone `effectiveMicDelayMs` in [0, 400].
