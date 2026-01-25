@@ -1131,3 +1131,64 @@ Scoring fixtures (song + pitch stream + expected total score breakdown) are out 
 - Covered song_time_ms window and all timing assumptions (BPM, GAP, micDelayMs, and any drift correction settings).
 - Expected per-checkpoint state (active note id, judgement bucket) and final score totals.
 - Enough detail to reproduce results deterministically without referencing USDX source code.
+
+# Appendix D. Fixture-driven UATs (planned, deterministic descriptions)
+
+This appendix lists mandatory MVP test cases that SHOULD be backed by fixtures. The fixtures themselves are NOT included here; this section defines deterministic inputs and expected outcomes so they can be generated later.
+
+Conventions:
+- A 'song fixture' is a self-contained directory containing a `.txt` chart and referenced media placeholders (audio file may be a silent stub).
+- A 'pitch fixture' is a JSON message log representing `pitchFrame`/`pitchBatch` traffic (Section 8.3) aligned to a song_time_ms window.
+- 'Expected outcome' MUST be assertable by an automated test without human interpretation.
+
+## D.1 Recursive song discovery
+Purpose: verify recursive `.txt` discovery across nested folders and stable sorting.
+Inputs: create a songs root with nested subfolders containing 3 `.txt` files at different depths. Each `.txt` has distinct #ARTIST/#ALBUM/#TITLE values.
+Expected outcome: library index contains exactly 3 entries; sort order is Artist, then Album, then Title (Section 3.4).
+
+## D.2 Reject missing required header tag
+Purpose: verify rejection and diagnostic collection.
+Inputs: `.txt` missing `#BPM:` (or empty `#TITLE:`). Provide line numbers deterministically by placing the missing/empty tag at a known line.
+Expected outcome: song is rejected (Section 3.2) with an error diagnostic that includes (a) 1-based line number and (b) reason code indicating which required field is missing.
+
+## D.3 Reject missing required audio file
+Purpose: verify required audio existence check.
+Inputs: `.txt` with required headers, but `#AUDIO:` points to a non-existent filename in the same directory.
+Expected outcome: song is rejected with a diagnostic indicating missing audio file (Section 3.2).
+
+## D.4 Unknown header tag is logged but parsing continues
+Purpose: verify unknown tags are preserved and warned.
+Inputs: `.txt` includes `#FOO:bar` before notes; required tags present.
+Expected outcome: song is accepted; diagnostics include a warning for unknown tag; `CustomTags` contains `(FOO, bar)` in the original order (Section 4.3).
+
+## D.5 Recoverable body grammar issue is logged but parsing continues
+Purpose: verify auto-fix and non-fatal handling.
+Inputs: `.txt` body contains an empty line, whitespace-only line, and a line with an unknown leading token `X ...`.
+Expected outcome: song is accepted; diagnostics include warnings for the unknown/invalid line(s); notes parsing continues; line count and note count match the parsable lines (Section 4.3).
+
+## D.6 Version-specific tag handling
+Purpose: verify `#NOTESGAP`/`#RESOLUTION` ignored for version >=1.0.0 and that `#RELATIVE` is rejected for version >=1.0.0.
+Inputs: two `.txt` files identical except #VERSION and presence of legacy tags.
+Expected outcome:
+- For #VERSION >= 1.0.0: `#NOTESGAP` and `#RESOLUTION` are ignored with info diagnostics; `#RELATIVE` causes rejection (Section 4.2).
+- For #VERSION absent or <1.0.0: legacy tags are honored (where specified) and song can be accepted.
+
+## D.7 Protocol frame ordering and batching
+Purpose: verify seq monotonicity and batch parsing.
+Inputs: a pitch fixture containing (a) a `pitchBatch` with 5 frames, then (b) a single `pitchFrame` with a lower `seq`.
+Expected outcome: batched frames are accepted in order; the regressing `seq` frame is dropped and produces a warning diagnostic (Section 8.3).
+
+## D.8 toneAbs octave normalization scoring
+Purpose: verify octave wrapping logic.
+Inputs: song fixture with one Normal note at target tone T for a short duration. Pitch fixture where phone sends `toneAbs` corresponding to pitch class T but an octave away (T +/- 12) while `toneValid=true`.
+Expected outcome: detection beats during the note score as hits as if the singer were in the closest octave (Section 6.4).
+
+## D.9 Rap presence-only scoring gate
+Purpose: verify rap notes ignore pitch difference but require voicing.
+Inputs: song fixture containing a Rap note spanning multiple detection beats. Pitch fixture with alternating `toneValid=false` and `toneValid=true` frames.
+Expected outcome: only detection beats whose selected frame has `toneValid=true` count as hits; pitch value does not affect hit/miss (Section 6.2).
+
+## D.10 Auto mic delay adjustment
+Purpose: verify TV-side drift/latency compensation algorithm.
+Inputs: a pitch fixture with consistent positive lateness bias (arrivalTimeTv later than mapped capture time) for >10s, stable median >80ms.
+Expected outcome: TV increases `effectiveMicDelayMs` in +10ms steps no more than once per 10s window until median bias is within +/-80ms, respecting [0,400] clamp and reset conditions (Section 9.2).
