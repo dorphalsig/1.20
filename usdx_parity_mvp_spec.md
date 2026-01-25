@@ -289,44 +289,94 @@ Token-specific behavior:
 
 ## 5.1 Authoritative Beat Definitions
 
- Highlight beat: CurrentBeat = floor(GetMidBeat(lyricsTimeSec - GAPms/1000)).
+The chart is authored in beats, while DSP frames and playback run in time. The TV MUST convert between time and beats deterministically using the rules below.
 
- Scoring beat: CurrentBeatD = floor(-0.5 + GetMidBeat(lyricsTimeSec - (GAPms + micDelayMs)/1000)).
+Definitions:
+- `GAPms`: the integer value of `#GAP:` in milliseconds.
+- `lyricsTimeSec`: the current lyrics/playback clock time in seconds, where `lyricsTimeSec = 0` corresponds to the start of the audio file.
+- `micDelayMs`: the per-phone (or per-player) microphone delay setting in milliseconds.
+
+Two beat cursors are used:
+
+1) Highlight beat cursor (UI timing)
+- `highlightTimeSec = lyricsTimeSec - (GAPms / 1000.0)`
+- `CurrentBeat = floor(TimeSecToMidBeatInternal(highlightTimeSec))`
+
+2) Scoring beat cursor (judgement timing)
+- `scoringTimeSec = lyricsTimeSec - ((GAPms + micDelayMs) / 1000.0)`
+- `CurrentBeatD = floor(TimeSecToMidBeatInternal(scoringTimeSec) - 0.5)`
+
+Notes:
+- `floor()` MUST be mathematical floor.
+- The `- 0.5` in `CurrentBeatD` is required to match USDX timing: it shifts scoring decisions half a beat earlier.
 
 ## 5.2 Beat-Time Conversion
 
-**Internal beat unit (parity-critical)**
-USDX scales the UltraStar files beat grid by **4** at load time:
-- `MultBPM := 4` (multiply beat-count of note by 4).
-- Header `#BPM` is loaded as `BPM_internal = BPM_file * Mult * MultBPM` with `Mult = 1`.
-- In-song BPM changes (`B` lines) are loaded the same way: `BPM_internal = BPM_file * Mult * MultBPM`, and the `StartBeat` is also shifted by any track-relative offset.
+### Internal beat unit
 
-**Implication for our implementation**
-Treat all parsed note `StartBeat` and `Duration` values (and any `B` segment `StartBeat`) as being in **internal beats**, where:
-- `1 UltraStar file beat = 4 internal beats`
-- All beat/time conversions (GetMidBeat/GetTimeFromBeat) operate on internal beats and internal BPM.
+This specification uses an internal beat grid that is 4x finer than the beat numbers written in UltraStar `.txt` files.
 
-**GetMidBeat(TimeSec) -> MidBeat (float)**
-Defined in `GetMidBeat()` / `GetMidBeatSub()`:
-- Static BPM: `MidBeat = TimeSec * BPM0 / 60`
-- Variable BPM: walk BPM segments in order and consume time:
- - For each segment `i`, let `segBeats = StartBeat[i+1] - StartBeat[i]` (or for last segment)
- - Let `segTime = segBeats * (60 / BPM[i])`
- - If `TimeSec >= segTime`, subtract `segTime` and add `segBeats` to beat accumulator; else add `TimeSec * BPM[i] / 60` and stop.
-Callers then apply `floor()` for current beat (highlight/click) or other rounding rules.
+- File beats: the integers stored in note lines (`startBeat`, `duration`) and sentence lines (`- startBeat`) in the `.txt`.
+- Internal beats: `internalBeat = fileBeat * 4`.
 
-**GetTimeFromBeat(BeatInt) -> TimeSec**
-Defined in `GetTimeFromBeat()`:
-- Static BPM: `TimeSec = GAPms/1000 + BeatInt * (60 / BPM0)`
-- Variable BPM:
- - `TimeSec := GAPms/1000`
- - For each segment `i`:
- - If `BeatInt >= StartBeat[i+1]`, add full segment time: `(StartBeat[i+1]-StartBeat[i]) * (60 / BPM[i])`
- - Else add remaining beats in this segment: `(BeatInt-StartBeat[i]) * (60 / BPM[i])` and stop.
+Parsing rule:
+- Every parsed file beat value (note `startBeat`, note `duration`, sentence `startBeat`, and BPM-change `startBeat`) MUST be multiplied by 4 before any further processing.
 
-**Boundary rules**
-- `GetMidBeat()` returns a float; **USDX uses `floor(MidBeat)`** for highlight/click beats.
-- Detection/scoring beat uses `floor(-0.5 + MidBeatD)` (see 5.1).
+### Internal BPM
+
+- The `.txt` header `#BPM:` is expressed in file beats per minute.
+- The internal BPM is:
+  - `BPM_internal = BPM_file * 4`
+
+For BPM changes inside the song body (`B <startBeat> <bpm>`):
+- Parse `startBeat_file` and `bpm_file`.
+- Convert:
+  - `startBeat_internal = startBeat_file * 4`
+  - `bpm_internal = bpm_file * 4`
+
+### TimeSecToMidBeatInternal
+
+`TimeSecToMidBeatInternal(tSec)` converts a time offset (seconds) into an internal beat position (float).
+
+Input:
+- `tSec` is measured relative to the chart origin (i.e., `lyricsTimeSec - GAPms/1000.0`), and MAY be negative.
+
+Output:
+- A floating-point internal beat position.
+
+Static BPM (no `B` lines):
+- `MidBeat_internal = tSec * (BPM_internal / 60.0)`
+
+Variable BPM (one or more `B` lines):
+- Let `segments` be the BPM segment list in ascending `startBeat_internal`, starting with segment 0 at `startBeat_internal = 0` with `bpm_internal = header_BPM_internal`.
+- For each segment `i` with `(startBeat_i, bpm_i)` and next segment start `startBeat_{i+1}` (or infinity for the last segment), define:
+  - `segBeats = startBeat_{i+1} - startBeat_i` (for the last segment, treat `segBeats = +infinity`)
+  - `secPerBeat = 60.0 / bpm_i`
+  - `segTime = segBeats * secPerBeat`
+- Conversion algorithm:
+  - If `tSec <= 0`, compute using the first segment only: `MidBeat_internal = tSec * (bpm_0 / 60.0)`.
+  - Else, walk segments from i=0 upward:
+    - If `tSec >= segTime`, then `tSec -= segTime` and add `segBeats` to the beat accumulator.
+    - Else, add `tSec * (bpm_i / 60.0)` to the beat accumulator and stop.
+
+### BeatInternalToTimeSec
+
+`BeatInternalToTimeSec(beatInt)` converts an internal beat index to a time offset in seconds, relative to the chart origin (i.e., `lyricsTimeSec - GAPms/1000.0`).
+
+Static BPM (no `B` lines):
+- `tSec = beatInt * (60.0 / BPM_internal)`
+
+Variable BPM:
+- Using the same segment definition as above, walk segments:
+  - Initialize `tSec = 0`.
+  - For each segment `i`:
+    - If `beatInt >= startBeat_{i+1}` (i.e., the beat lies after the segment end), add full segment time: `(startBeat_{i+1} - startBeat_i) * (60.0 / bpm_i)`.
+    - Else, add remaining time in this segment: `(beatInt - startBeat_i) * (60.0 / bpm_i)` and stop.
+
+
+To convert this chart-relative time back to `lyricsTimeSec` (audio-start relative), add `GAPms/1000.0`.
+Boundary conventions:
+- When comparing a time to a note window converted from beats, implementations MUST use: `noteActive if startBeat <= beat < endBeat` (start inclusive, end exclusive).
 
 ## 5.3 START/END/NOTESGAP
 
