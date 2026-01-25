@@ -465,6 +465,14 @@ For a sentence/line, USDX computes the maximum points available for that line (f
 - `MaxLineScore = MaxSongScore * (Line.ScoreValue / Song.Track.ScoreValue)`
 
 `Line.ScoreValue` and `Song.Track.ScoreValue` are computed while parsing notes as:
+
+ScoreFactor constants (MVP, normative):
+- ntFreestyle (F): 0
+- ntNormal (:): 1
+- ntGolden (*): 2
+- ntRap (R): 1
+- ntRapGolden (G): 2
+
 - `ScoreValue += Note.Duration * ScoreFactor[noteType]` (freestyle contributes 0).
 
 **Line perfection**
