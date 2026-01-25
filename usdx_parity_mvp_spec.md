@@ -1,0 +1,909 @@
+Android Karaoke Game
+USDX Parity MVP Functional Specification
+
+Version: 0.2
+
+Date: 2026-01-25
+
+Owner: TBD
+
+Status: Draft
+
+
+
+# Revision History
+
+| Version | Date | Author | Changes |
+| --- | --- | --- | --- |
+| 0.2 | 2026-01-25 | TBD | Add Appendix C expected results for pitch stream fixtures; add explicit fixture time windows; clarify toneAbs=0 is a valid pitch when toneValid=true. |
+| 0.1 | 2026-01-25 | TBD | Initial draft skeleton. |
+
+
+
+# How to Use This Spec
+
+This document defines the functional behavior required to implement a minimal Android karaoke game that behaves like UltraStar Deluxe (USDX) for the agreed MVP scope. It is designed to be sufficiently explicit for AI-driven implementation.
+
+Conventions:
+
+- TBD = decision or detail not yet specified.
+
+- Paritiy-critical = must match USDX behavior for compatibility.
+
+- Defaults are explicitly stated; if not, behavior is unspecified and must be decided.
+
+
+
+# Table of Contents
+
+TBD (auto-generated in Google Docs/Word).
+
+
+
+# 1. Product Contract
+
+- Goal: USDX-like karaoke gameplay (parity for parsing, timing, duet, rap, scoring, results).
+
+- Platforms: Android TV host app + 2 Android phone mic clients.
+
+- Connectivity: same-subnet Wi-Fi only; offline operation.
+
+- Players: 2.
+
+- Out of scope: online song store, party modes, editors, esports-grade calibration.
+
+## 1.1 Locked Product Decisions
+
+- Default per-player level: Normal.
+
+- Line bonus: ON.
+
+- Duet: YES; swap duet parts: YES.
+
+- Rap: YES (presence-based); Freestyle: no scoring.
+
+- Video backgrounds: YES.
+
+- Instrumental (full-song) via #INSTRUMENTAL: YES; instrumental gaps indicator: YES; instrumental.txt variant: NO.
+
+- Songs loaded from USB/internal via SAF folder picker; persisted URI permissions.
+
+## 1.2 Definition of Done
+
+Paritiy MVP PASS requires all golden parsing and scoring fixtures to match expected results, plus functional pairing and play flows operating reliably on typical home Wi-Fi (see Section 11).
+
+# 2. Architecture Overview
+
+## 2.1 Components
+
+- TV Host App: library, chart parsing, playback, timing/beat computation, scoring, UI, session management.
+
+- Phone Mic Client: mic capture + DSP (pitch), computes toneValid thresholding, streams frames to TV.
+
+## 2.2 Data Responsibilities
+
+TV is authoritative for: song timeline, beats, scoring, rendering. Phones are authoritative for: mic capture and pitch extraction only.
+
+# 3. Songs and Library
+
+## 3.1 Storage Access
+
+ SAF folder picker (ACTION_OPEN_DOCUMENT_TREE) for one or more song root folders; persisted read permission.
+
+## 3.2 Discovery and Validation Rules
+
+USDX scans for **all `.txt` files recursively** under configured song folders. Each `.txt` is treated as a distinct song entry, even if multiple `.txt` files exist in the same folder. (`src/base/USongs.pas` L302-L331)
+
+**Validation ("analyse")**
+A song is accepted into the library only if `Song.Analyse` succeeds; otherwise it is discarded. (`src/base/USongs.pas` L318-L329)
+
+In header parsing, USDX treats the following as required:
+- `#TITLE`, `#ARTIST`, audio filename (`#AUDIO` for format >= 1.0.0 or `#MP3`), and `#BPM`.
+It tracks these via a bitmask (`Done` must equal 15). (`src/base/USong.pas` L1158-L1204 and L1445-L1460)
+
+**Missing files**
+Audio/video/instrumental files are validated for existence at load time:
+- Missing required audio file -> load fails. (`src/base/USong.pas` `CheckAndSetAudioFile`, called from header parsing)
+- Missing optional video/instrumental -> logged; song can still load (but feature disabled).
+
+**MVP parity requirements**
+- Mirror the recursive `.txt` discovery behavior.
+- Reject songs missing the required header fields or required audio file.
+- Keep invalid song diagnostics (error line number + reason) for UI display.
+
+## 3.3 Index Fields (Functional)
+
+ Define which fields must be stored to render Song Select without full re-parse (e.g., title/artist, flags, URIs, modified times, validation status, duet labels).
+
+# 4. USDX TXT Format Support
+
+## 4.1 Supported Note Tokens
+
+### Note/body line tokens (USDX parser)
+
+USDX reads the song body line-by-line and interprets the first character token. (`src/base/USong.pas` LoadOpenedSong, L705-L870)
+
+Supported tokens:
+- `:` Normal note
+- `*` Golden note
+- `F` Freestyle note (scored as 0)
+- `R` Rap note
+- `G` RapGolden note
+- `-` Line break / new sentence
+- `E` End of song data
+- `B` BPM change event inside song data
+- `P1`, `P2` Duet part delimiters (body markers; must appear on their own line, starting with `P`)
+
+### Per-note fields
+For note tokens (`:`, `*`, `F`, `R`, `G`) USDX parses:
+`<token> <startBeat> <duration> <tone> <lyricText...>`
+- `startBeat` and `duration` are integers from file, then multiplied by `Mult` (1) and offset by any relative mode shift; `MultBPM` scaling is applied via BPM, not via these fields. (`src/base/USong.pas` L820)
+- `tone` is an integer note tone as stored in the file.
+- `lyricText` is the remainder of the line after the numeric fields.
+
+### Duet structure
+- If the first non-empty body line begins with `P`, USDX marks the song as duet (`isDuet = true`) and creates two tracks. (`src/base/USong.pas` L705-L724)
+- A `P1`/`P2` marker sets the active track (0/1). (`src/base/USong.pas` L872-L913)
+- Notes and `-` sentence breaks are assigned to the current active track.
+- The file ends with a single `E` after all notes.
+
+## 4.2 Supported Header Tags and Semantics
+
+### Required tags
+- `#TITLE:` song title (UTF-8 for format >= 1.0.0). (`src/base/USong.pas` L1148-L1156)
+- `#ARTIST:` song artist. (`src/base/USong.pas` L1158-L1166)
+- `#BPM:` base BPM. USDX loads as `BPM_internal = BPM_file * 4`. (`src/base/USong.pas` L1184-L1194)
+- Audio filename:
+ - Format 1.0.0: `#AUDIO:` preferred; if present it overrides `#MP3:`. (`src/base/USong.pas` L1170-L1183)
+ - Older formats: `#MP3:` is used. (`src/base/USong.pas` L1185-L1183)
+ - Audio file must exist, otherwise load fails. (`src/base/USong.pas` `CheckAndSetAudioFile`)
+
+### Timing/alignment tags
+- `#GAP:` millisecond offset used as `LyricsState.StartTime` and for beat/time conversions. (`src/base/USong.pas` L1226-L1232; `src/screens/controllers/UScreenSingController.pas` L1204-L1214)
+- `#START:` seconds; initial playback/lyrics time offset. (`src/base/USong.pas` L1275-L1280)
+- `#END:` milliseconds; sets lyrics total time if present. (`src/base/USong.pas` L1282-L1287)
+- `#PREVIEWSTART:` seconds; used by editor and can be used for song preview. (`src/base/USong.pas` L1346+)
+
+### Media tags
+- `#VIDEO:` video filename. (`src/base/USong.pas` L1234+)
+- `#VIDEOGAP:` seconds offset added to audio position when positioning video. (`src/base/UFiles.pas`; used in `src/screens/controllers/UScreenSingController.pas` L1134-L1137)
+- `#INSTRUMENTAL:` alternate audio file used for instrumental/karaoke mode. (`src/base/UFiles.pas` L157; `src/media/UAudioPlaybackBase.pas` L118-L149)
+- `#COVER:` image; `#BACKGROUND:` image; with fallbacks `*[CO].jpg` and `*[BG].jpg` if unset. (`src/base/USong.pas` L1451-L1458)
+
+### Duet tags
+Singer labels (selection/menu only; not the duet body delimiter):
+- `#P1:` and `#P2:` set duet singer names. (`src/base/USong.pas` L1408-L1434)
+- Legacy `#DUETSINGERP1:` / `#DUETSINGERP2:` are only honored for format <1.0.0; ignored for 1.0.0. (`src/base/USong.pas` L1381-L1407)
+
+### Legacy/deprecated tags
+- `#ENCODING:` ignored for format >= 1.0.0 (UTF-8 is forced); honored for older formats. (`src/base/USong.pas` L1102-L1136)
+- `#RESOLUTION:` and `#NOTESGAP:` honored only for format <1.0.0; ignored otherwise. (`src/base/USong.pas` L1293-L1326)
+- `#RELATIVE:` honored only for format <1.0.0; for 1.0.0 the song is rejected (not loaded). (`src/base/USong.pas` L1328-L1344)
+
+### In-song BPM changes
+- Body lines starting with `B` define variable BPM segments: `B <startBeat> <bpm>`. (`src/base/USong.pas` L833-L839)
+
+## 4.3 Error Handling
+
+**Implementation requirements (MVP, parity-aligned)**
+
+**Header tags**
+- Unknown header tags: **ignore + warn**.
+- Known header tags with malformed values:
+ - If the tag is **required for validity** (TITLE/ARTIST/AUDIO-or-MP3/BPM): mark the song **invalid**.
+ - If the tag is **optional** (VIDEO, COVER, BACKGROUND, INSTRUMENTAL, etc.): **warn** and treat as absent.
+
+**Media files**
+- Missing/unresolvable required audio file: **invalid**.
+- Missing optional assets (video/images/instrumental): **warn** and continue without that asset.
+- If video fails to open/decode at runtime: fall back to background/visualization without interrupting scoring/playback.
+
+**Body grammar (notes section)**
+- Malformed body lines, unknown note tokens, or missing required parameters (e.g., `-` without a beat): mark song **invalid** (fail load).
+- Lenient skip-and-warn for body lines is NOT parity; it MAY exist as a debug-only mode (off by default) but must be documented as non-parity.
+
+**Version/encoding**
+- Unsupported `#VERSION` -> invalid.
+- For `VERSION >= 1.0.0`, treat file as UTF-8; ignore `#ENCODING` with a warn/info log.
+- For legacy versions, apply `#ENCODING` if present; decode failure -> invalid.
+
+**Logging**
+- All invalidation MUST include a concise reason string suitable for display in debug invalid songs listing.
+
+# 5. Timing and Beat Model (Parity-Critical)
+
+## 5.1 Authoritative Beat Definitions
+
+ Highlight beat: CurrentBeat = floor(GetMidBeat(lyricsTimeSec - GAPms/1000)).
+
+ Scoring beat: CurrentBeatD = floor(-0.5 + GetMidBeat(lyricsTimeSec - (GAPms + micDelayMs)/1000)).
+
+## 5.2 Beat-Time Conversion
+
+**Internal beat unit (parity-critical)**
+USDX scales the UltraStar files beat grid by **4** at load time:
+- `MultBPM := 4` (multiply beat-count of note by 4). (`src/base/USong.pas` L675)
+- Header `#BPM` is loaded as `BPM_internal = BPM_file * Mult * MultBPM` with `Mult = 1`. (`src/base/USong.pas` L1184-L1194)
+- In-song BPM changes (`B` lines) are loaded the same way: `BPM_internal = BPM_file * Mult * MultBPM`, and the `StartBeat` is also shifted by any track-relative offset. (`src/base/USong.pas` L834-L839)
+
+**Implication for our implementation**
+Treat all parsed note `StartBeat` and `Duration` values (and any `B` segment `StartBeat`) as being in **internal beats**, where:
+- `1 UltraStar file beat = 4 internal beats`
+- All beat/time conversions (GetMidBeat/GetTimeFromBeat) operate on internal beats and internal BPM.
+
+**GetMidBeat(TimeSec) -> MidBeat (float)**
+Defined in `GetMidBeat()` / `GetMidBeatSub()` (`src/base/UNote.pas` L208-L241):
+- Static BPM: `MidBeat = TimeSec * BPM0 / 60`
+- Variable BPM: walk BPM segments in order and consume time:
+ - For each segment `i`, let `segBeats = StartBeat[i+1] - StartBeat[i]` (or for last segment)
+ - Let `segTime = segBeats * (60 / BPM[i])`
+ - If `TimeSec >= segTime`, subtract `segTime` and add `segBeats` to beat accumulator; else add `TimeSec * BPM[i] / 60` and stop.
+Callers then apply `floor()` for current beat (highlight/click) or other rounding rules.
+
+**GetTimeFromBeat(BeatInt) -> TimeSec**
+Defined in `GetTimeFromBeat()` (`src/base/UNote.pas` L243-L300):
+- Static BPM: `TimeSec = GAPms/1000 + BeatInt * (60 / BPM0)`
+- Variable BPM:
+ - `TimeSec := GAPms/1000`
+ - For each segment `i`:
+ - If `BeatInt >= StartBeat[i+1]`, add full segment time: `(StartBeat[i+1]-StartBeat[i]) * (60 / BPM[i])`
+ - Else add remaining beats in this segment: `(BeatInt-StartBeat[i]) * (60 / BPM[i])` and stop.
+
+**Boundary rules**
+- `GetMidBeat()` returns a float; **USDX uses `floor(MidBeat)`** for highlight/click beats. (`src/base/UBeatTimer.pas` L290-L293)
+- Detection/scoring beat uses `floor(-0.5 + MidBeatD)` (see 5.1). (`src/base/UBeatTimer.pas` L294-L297)
+
+## 5.3 START/END/NOTESGAP
+
+**START**
+- Parsed from `#START:` as a float seconds value stored in `Song.Start`. (`src/base/USong.pas` L1275-L1280)
+- At song load (sing screen), lyrics timer current time is initialized to `Song.Start` for normal mode. (`src/screens/controllers/UScreenSingController.pas` L1204-L1214)
+- Audio playback is positioned to `LyricsState.GetCurrentTime()` (which was set to `Song.Start`). (`src/screens/controllers/UScreenSingController.pas` L883-L891)
+- Video start position is set to `VideoGAP + Song.Start` (normal mode). (`src/screens/controllers/UScreenSingController.pas` L1134-L1137)
+
+**END**
+- Parsed from `#END:` as an integer stored in `Song.Finish` (milliseconds). (`src/base/USong.pas` L1282-L1287)
+- If `Finish > 0`, lyrics timer `TotalTime` is set to `Finish/1000`; otherwise it uses the audio length. (`src/screens/controllers/UScreenSingController.pas` L1208-L1217 and L893-L901)
+
+**NOTESGAP and RESOLUTION**
+- These headers are only honored for **format versions < 1.0.0**; for 1.0.0 they are ignored with an info log. (`src/base/USong.pas` L1293-L1326)
+- When honored, `NOTESGAP` is used for beat-click scheduling and editor/drawing beat delimiter alignment (not scoring). Example: beat click checks `(CurrentBeatC + Resolution + NotesGAP) mod Resolution`. (`src/base/UBeatTimer.pas` + drawing helpers; note: gameplay scoring uses `CurrentBeatD` and does not use NotesGAP/Resolution.)
+
+**Gameplay-visible behaviors that depend on START/END**
+- **Restart song** resets scores and seeks to `Song.Start` (and sets video to `VideoGAP + Song.Start`). (`src/screens/controllers/UScreenSingController.pas` L240-L289)
+- **Skip intro** (key `S`) seeks to **5 seconds before** the first upcoming line start if the first line is >6 seconds ahead (duet uses the earlier of the two tracks). (`src/screens/controllers/UScreenSingController.pas` L412-L427)
+
+# 6. Scoring (Parity-Critical)
+
+## 6.1 Scoring Overview
+
+ Beat-based scoring, normalized to 10000 total. Line bonus ON reserves 1000 for line bonus and distributes remaining points via note value normalization.
+
+## 6.2 Note Types
+
+**USDX behavior (authoritative from source)**
+- Freestyle notes are explicitly excluded from active note detection and therefore score nothing. (`src/base/UNote.pas` L525-L529)
+- Scoring is gated by `CurrentSound.ToneValid` (voice above threshold and pitch analysis ran). (`src/base/UNote.pas` L559-L560)
+- Rap/RapGolden treat pitch as automatically hit (timing + ToneValid only): the pitch-difference check ORs rap types. (`src/base/UNote.pas` L589-L591)
+
+**Rap voice present threshold (ToneValid)**
+- ToneValid becomes true only if `MaxVolume >= Threshold` where MaxVolume is the maximum absolute amplitude over the first 1024 samples of the analysis buffer. (`src/base/URecord.pas` L375-L397)
+- Threshold values are fixed table `IThresholdVals = (0.05,0.10,0.15,0.20,0.25,0.30,0.40,0.60)` selected by `Ini.ThresholdIndex`. (`src/base/UIni.pas` L388-L389)
+
+
+ Freestyle: no points. Rap: presence-based (toneValid), pitch ignored. Normal/Golden: toneValid gate + pitch/tolerance.
+
+## 6.3 Player Level / Tolerance
+
+**USDX behavior (authoritative from source)**
+- Per-player tolerance (normal/medley): `Range := 2 - Ini.PlayerLevel[player]`. (`src/base/UNote.pas` L582-L587)
+- Difficulty enum indices: `Easy/Medium/Hard = 0/1/2`. (`src/base/UIni.pas` L347)
+ - Easy (0) -> Range **2** semitones
+ - Medium (1) -> Range **1** semitone
+ - Hard (2) -> Range **0** semitones
+- Default per-player `PlayerLevel` is **1 (Medium)**. (`src/base/UIni.pas` L1435-L1447)
+
+**Parity requirement**
+Our scoring must implement the exact Range mapping above, per player.
+
+## 6.4 Octave Normalization
+
+**USDX behavior (authoritative from source)**
+Before comparing to the target note, USDX normalizes the detected pitch **to the closest octave of the target note**, but it does so using the detected pitch-class (`Tone`) and shifting it by 12:
+
+```
+while (Tone - TargetTone > 6) Tone := Tone - 12
+while (Tone - TargetTone < -6) Tone := Tone + 12
+```
+
+(`src/base/UNote.pas` L575-L580)
+
+**Notes**
+- The detector produces `ToneAbs` (0..NumHalftones-1) and `Tone := ToneAbs mod 12` (pitch class). (`src/base/URecord.pas` L441-L442)
+- After octave normalization, the value compared/scored is the normalized `Tone` (potentially outside 0..11).
+
+**Parity requirement**
+Implement octave normalization exactly as above (shift detected `tone` by 12 until it is within 6 semitones of the target note).
+
+## 6.5 Line Bonus
+
+**USDX behavior (authoritative from source)**
+
+**When line bonus is enabled**
+- Line bonus is enabled when `Ini.LineBonus > 0`. (`src/screens/controllers/UScreenSingController.pas` L1750-L1772)
+- The total score budget is split:
+ - If line bonus OFF: `MaxSongScore = 10000`
+ - If line bonus ON: `MaxSongScore = 10000 - 1000` (notes+golden use 9000; line bonus uses 1000) (`src/base/UNote.pas` L598-L603; `src/screens/controllers/UScreenSingController.pas` L1720-L1724)
+
+**Per-line max score**
+For a sentence/line, USDX computes the maximum points available for that line (from notes budget) as:
+- `MaxLineScore = MaxSongScore * (Line.ScoreValue / Song.Track.ScoreValue)` (`src/screens/controllers/UScreenSingController.pas` L1729-L1729)
+
+`Line.ScoreValue` and `Song.Track.ScoreValue` are computed while parsing notes as:
+- `ScoreValue += Note.Duration * ScoreFactor[noteType]` (freestyle contributes 0). (`src/base/USong.pas` L1532-L1537; ScoreFactor in `src/base/UMusic.pas` L44-L47)
+
+**Line perfection**
+At sentence end:
+- `LineScore = (Player.Score + Player.ScoreGolden) - Player.ScoreLast`
+- If `MaxLineScore <= 2` then `LinePerfection = 1`
+- Else `LinePerfection = LineScore / (MaxLineScore - 2)`
+- Clamp `LinePerfection` to [0..1]
+(`src/screens/controllers/UScreenSingController.pas` L1740-L1749)
+
+**Line bonus distribution**
+- Each **non-empty** line gets an equal slice of the 1000-point line bonus pool:
+ - `LineBonusPerLine = 1000 / (NumLines - NumEmptySentences)`
+ - A line is empty if `Line.ScoreValue = 0`. (`src/screens/controllers/UScreenSingController.pas` L1255-L1278)
+- Player receives `LineBonusPerLine * LinePerfection`, accumulated into `Player.ScoreLine`. (`src/screens/controllers/UScreenSingController.pas` L1753-L1765)
+
+**Rounding**
+- `Player.ScoreLineInt := Floor(Round(Player.ScoreLine) / 10) * 10` (line score is rounded then floored-to-tens). (`src/screens/controllers/UScreenSingController.pas` L1761-L1763)
+
+**Parity requirement**
+Implement sentence-end scoring and line bonus exactly as above, including the `-2` forgiveness and the line-bonus rounding rule.
+
+## 6.6 Rounding and Display
+
+**USDX behavior (authoritative from source)**
+
+**Per-beat note scoring**
+When a beat is hit, points awarded are:
+- `CurNotePoints := (MaxSongPoints / Track.ScoreValue) * ScoreFactor[noteType]`
+- Added each detection beat for the active note to:
+ - `Player.Score` for Normal/Rap
+ - `Player.ScoreGolden` for Golden/RapGolden
+(`src/base/UNote.pas` L604-L619)
+
+`MaxSongPoints` is 10000 if line bonus is off, otherwise 9000. (`src/base/UNote.pas` L598-L603)
+
+**Tens rounding**
+- `ScoreInt := round(Score/10)*10`
+- `ScoreGoldenInt` is rounded to tens in the opposite direction to ensure `ScoreInt + ScoreGoldenInt` cannot exceed 10000 due to .5 rounding edge cases:
+ - If `ScoreInt < Score` then `ScoreGoldenInt := ceil(ScoreGolden/10)*10`
+ - Else `ScoreGoldenInt := floor(ScoreGolden/10)*10`
+- `ScoreTotalInt := ScoreInt + ScoreGoldenInt + ScoreLineInt`
+(`src/base/UNote.pas` L624-L640)
+
+**Parity requirement**
+Use the exact rounding rules above and compute total as shown.
+
+# 7. Multiplayer, Pairing, and Session Lifecycle
+
+## 7.1 Session States
+
+ No Session / Open / Locked / Ended. Locked during song; reconnect allowed.
+
+## 7.2 Pairing UX (TV)
+
+ TV shows QR + code; two slots P1/P2; auto-assign first phone to P1, second to P2; kick/forget.
+
+## 7.3 Pairing UX (Phone)
+
+ Join by QR/code; show connection, level meter, mute; leave session.
+
+## 7.4 Disconnect/Reconnect
+
+ No pause. Disconnected player = No-Score until reconnect; reconnect reclaims slot by clientId if possible.
+
+# 8. Network Protocol
+
+## 8.1 Transport
+
+**Implementation requirements (MVP)**
+
+- Transport MUST be **WebSocket** over the local network (same subnet WiFi).
+- TV host exposes: `ws://<host-ip>:<port>/?token=<sessionToken>`.
+- **Session token**
+ - Cryptographically random string, minimum 128 bits entropy (e.g., 22+ chars base64url).
+ - Generated per Session start; invalidated when Session ends.
+ - Reuse across sessions is NOT allowed.
+- Host MUST reject connections with missing/incorrect token and send an `error` before closing.
+
+## 8.2 Control Messages
+
+**Implementation requirements (MVP)**
+
+All messages are JSON objects with fields:
+- `type` (string), `protocolVersion` (int), `tsTvMs` (optional; TV may include).
+
+Required control messages:
+
+1) `hello` (phone -> TV) 
+- Fields: `clientId` (stable UUID), `deviceName`, `appVersion`, `protocolVersion`, `capabilities` (e.g., `{"pitchFps":50}`)
+
+2) `assignPlayer` (TV -> phone) 
+- Fields: `playerId` (`"P1"` or `"P2"`), `thresholdIndex` (0..7), `effectiveMicDelayMs` (optional for display/debug)
+
+3) `sessionState` (TV -> phone, and optional phone -> TV ack) 
+- Fields: `sessionId`, `slots` (`{"P1":{connected,deviceName}, "P2":{...}}`), `inSong` (bool), `songTimeSec` (float, optional)
+
+4) `ping` / `pong` (both directions) 
+- `ping` fields: `nonce`, `tSendTvMs` (TV time) or `tSendPhoneMs` (phone time) depending on sender 
+- `pong` echoes nonce plus sender timestamps to compute RTT and offset.
+
+5) `error` (TV -> phone) 
+- Fields: `code` (string), `message` (string). After sending, TV MAY close.
+
+6) `assignSinger` (TV -> phone)
+
+Sent when the user starts a song (Assign Singers overlay) and on reconnect while a song is in progress.
+
+- Fields:
+ - `sessionId` (string)
+ - `songInstanceId` (string; changes every time a song starts)
+ - `role` (`"singer"` or `"spectator"`)
+ - If `role=="singer"`:
+ - `playerId` (`"P1"` or `"P2"`)
+ - `difficulty` (`"Easy" | "Medium" | "Hard"`)
+ - `thresholdIndex` (0..7)
+ - `effectiveMicDelayMs` (int)
+ - `expectedPitchFps` (int; default 50)
+ - `startMode` (`"countdown"` or `"live"`)
+ - `countdownMs` (int; required if `startMode=="countdown"`)
+- Semantics:
+ - `role="singer"` instructs the phone to begin streaming frames for the given `playerId` and `songInstanceId`.
+ - `role="spectator"` instructs the phone to stop streaming frames (or the TV will ignore them).
+ - On song end/quit, TV MUST send `assignSinger` with `role="spectator"` to selected phones (clears assignment).
+
+Validation rules:
+- Unknown `type`: ignore + warn (except during handshake; handshake failures are fatal).
+- `protocolVersion` mismatch: send `error(code="PROTOCOL_MISMATCH")` and close.
+
+## 8.3 Pitch Stream Messages
+
+ Option A: phone sends `toneValid` + `toneAbs` at 50 fps.
+
+**Implementation requirements (MVP)**
+
+`pitchFrame` (phone -> TV)
+- Fields (required):
+ - `type: "pitchFrame"`
+ - `protocolVersion` (int)
+ - `playerId` (`"P1"` or `"P2"`)
+ - `seq` (uint32, increments by 1 per frame)
+ - `tCaptureMs` (phone monotonic ms)
+ - `toneValid` (bool) MUST match USDX-style thresholding
+ - `toneAbs` (float or null) semitone index in the same domain used by chart pitch values (see scoring section)
+- Fields (optional but recommended):
+ - `maxAmp` (float 0..1) debugging/telemetry only
+ - `thresholdIndex` (int 0..7) debugging only
+
+Rate:
+- Default 50 fps (one frame every 20 ms). Phone MAY batch multiple frames in a single WebSocket message as `{"type":"pitchBatch","frames":[...]}`.
+
+Validation:
+- Drop frames with decreasing `seq` or `tCaptureMs` regressions > 200 ms.
+- If no valid frame exists for a scoring beat window, treat as `toneValid=false` (silence).
+
+## 8.4 Versioning and Compatibility
+
+**Implementation requirements (MVP)**
+
+- Define `protocolVersion = 1` for this MVP.
+- TV host MUST reject clients whose `hello.protocolVersion != 1` with `error(code="PROTOCOL_MISMATCH")` and close.
+- Backward/forward compatibility is out of scope for MVP; future versions must increment `protocolVersion` and maintain a compatibility table.
+
+# 9. Time Sync, Jitter Handling, and Auto Delay
+
+## 9.1 Defaults
+
+These defaults are chosen to be playable on typical home WiFi while keeping perceived A/V sync acceptable for karaoke (not esports).
+
+- Ping/pong: every **2s** per phone; use median of last 5 RTTs for offset smoothing.
+
+- Pitch frame rate: **50 fps** (20ms interval). If phone cant sustain it, allow 25 fps but TV scoring must still sample at detection beats.
+
+- Jitter buffer (TV):
+ - Target playout delay: **220ms**
+ - Max playout delay cap: **450ms**
+ - Frames arriving later than cap are dropped (treated as silence).
+
+- Scoring sample selection:
+ - For each detection beat time, use the **most recent pitch frame at or before** that time.
+ - If the newest available frame is older than **120ms**, treat as `toneValid=false` for that beat (prevents stale pitch scoring after stalls).
+
+- Silence / missing frames:
+ - Missing or invalid frames are treated as `toneValid=false` (no scoring; rap also requires `toneValid=true`).
+
+- Disconnect:
+ - No pause; disconnected player scores 0 until reconnect.
+
+## 9.2 Auto Mic Delay Adjust (ON by default)
+
+**Parity anchor**
+USDX applies mic delay only in detection/scoring beat computation:
+`CurrentBeatD = floor(-0.5 + GetMidBeat(time - (StartTime + MicDelay)/1000))`. (`src/base/UBeatTimer.pas` L294-L297)
+
+**Auto-adjust algorithm (MVP-defined; ON by default)**
+- Maintain per-phone `effectiveMicDelayMs` in [0, 400].
+- Every 2s, compute lateness samples from the last 10s:
+ - `latenessMs = (arrivalTimeTv - (frameTimestampPhoneMappedToTv))`
+- If the median lateness bias is stable and `abs(median) > 80ms`, nudge:
+ - If frames are **late** (median > 0) -> **increase** `effectiveMicDelayMs` by +10ms (pull scoring window earlier).
+ - If frames are **early** (median < 0) -> **decrease** `effectiveMicDelayMs` by 10ms.
+- Apply cooldown: at most one nudge per 10s window.
+
+**Reset behavior**
+- Reset `effectiveMicDelayMs` to baseline (user setting or 0) when:
+ - phone reconnects,
+ - song changes,
+ - clock sync is re-established after a long gap (>5s).
+
+# 10. UI Screens and Flows
+
+This section is normative for MVP UI and navigation on Android TV.
+
+## 10.1 Global navigation and input
+
+- Primary input is TV remote (DPAD + OK/Enter + Back).
+- **Back** behavior:
+ - From Song List: exits app (or returns to Android launcher).
+ - From Settings: returns to Song List.
+ - From modal dialogs/overlays (Search, Assign Singers): closes overlay and returns to Song List.
+ - From Singing: opens Pause overlay (Resume / Quit to Song List).
+- **OK/Enter** selects highlighted item.
+- DPAD navigates focus in lists and menus.
+- If a software keyboard is shown (Search), Back closes keyboard first, then overlay.
+
+## 10.2 Song List (Landing Screen)
+
+**Purpose**
+- Always the landing screen (even if library is empty).
+- Displays songs sorted by **Artist -> Album -> Title**.
+- MVP has **no song queue/playlist**; only one song is selected and played at a time.
+
+**Header actions**
+- **Settings** button: opens Settings screen.
+- **Search** button: opens Search overlay (see 10.2.1).
+
+**Empty state**
+- If no songs are indexed, show:
+ - No songs found.
+ - Hint: Open Settings -> Song Library to add a songs folder.
+
+**Song row display**
+- Minimum: Title, Artist, Album (if present).
+- Icons/flags (if known from index): Duet, Rap, Video, Instrumental available.
+
+**Selection behavior**
+- OK on a song opens **Assign Singers** overlay (10.3).
+
+**Song preview**
+**Song preview**
+- MVP: 510s audio preview starting at `#PREVIEWSTART` if present; otherwise (optional) start at `Song.Start` or the first note.
+(USDX editor uses PREVIEWSTART heavily; selection-screen preview behavior is theme-dependent, so we define MVP behavior here.)
+
+### 10.2.1 Search (MVP)
+
+**User-visible behavior**
+- Song list includes a **Search** action (button or icon in the header). Selecting it opens a Search overlay.
+- Search overlay contains:
+ - `Query` text field
+ - `Scope` selector: `Everywhere` (default), `Artist`, `Album`, `Song`
+ - Results list that updates as the query changes
+- Matching is **case-insensitive substring** match.
+ - `Artist` scope matches only the artist field.
+ - `Album` scope matches only the album field.
+ - `Song` scope matches only the title field.
+ - `Everywhere` matches if any of {artist, album, title} match.
+- Selecting a result behaves exactly like selecting that song in the main list (i.e., proceeds to Assign singers flow as specified in Section 7/10 once added).
+
+**Performance and memory constraints (normative for MVP)**
+- Live filtering MUST be implemented as **O(N)** scan over the in-memory song index, where `N` is the number of songs.
+- Input MUST be **debounced** by 120200 ms.
+- UI MUST cap displayed results to **50** (or fewer) to avoid render stalls.
+- Store pre-normalized lowercase strings per song (`artistL`, `albumL`, `titleL`) to avoid repeated allocations during filtering.
+- Optional: for `Everywhere`, implementations MAY precompute `allL = artistL + " " + albumL + " " + titleL` per song to reduce per-keystroke checks; this is not required.
+
+## 10.3 Assign Singers overlay (per-song)
+
+**Purpose**
+- On selecting a song, assign the song to one or two connected phones (singers).
+
+**Fields**
+- Singer 1 device: required (list of connected phones).
+- Singer 2 device: optional; **required if the song is a duet**.
+- Difficulty per singer: Easy / Medium / Hard.
+- If duet: **Swap Parts** toggle (DuetChange) applied to P1/P2 tracks.
+
+**Gating rules**
+- Duet songs:
+ - Start is blocked until Singer 1 and Singer 2 are both selected and connected.
+- Non-duet songs:
+ - Singer 1 required.
+ - Singer 2 optional; if selected, both singers sing the same track and are scored independently.
+
+**Actions**
+- Start: begins countdown then singing.
+- Cancel/Back: returns to Song List.
+
+**Protocol side effects (normative)**
+- On Start, TV sends `assignSinger` to each connected phone:
+ - Selected devices get `role="singer"` with `playerId="P1"` for Singer 1 and `"P2"` for Singer 2.
+ - Non-selected devices MAY receive `role="spectator"` (or receive no message).
+- When a song ends or user quits:
+ - TV sends `assignSinger` with `role="spectator"` (clears assignment).
+- Countdown mapping (from Settings > Gameplay):
+ - If Ready countdown is ON: send `startMode="countdown"` and `countdownMs = countdownSeconds*1000`.
+ - If OFF: send `startMode="live"` and omit `countdownMs`.
+## 10.4 Settings Screen
+
+Settings is a simple list of items; selecting one opens a sub-screen.
+
+- Connect Phones
+- Song Library
+- Audio
+- Scoring Timing
+- Gameplay
+- Video
+- Debug (optional)
+
+### 10.4.1 Settings > Connect Phones
+
+**Purpose**
+- Allow phones to connect via QR/code.
+- Show list of connected devices.
+
+**UI**
+- QR code + short code.
+- Device roster list:
+ - display name (editable label), connection status.
+ - Optional: latency indicator.
+
+**Actions**
+- Rename device (changes display label).
+- Forget/Kick device (optional; if implemented must be specified in Section 7).
+
+### 10.4.2 Settings > Song Library
+
+This is the Add songs workflow.
+
+- Button: **Add songs folder**
+ - Opens SAF folder picker.
+ - On success: persist permission and add root.
+- Root list shows each root with:
+ - status (OK / unavailable), last scan, song count.
+- Actions:
+ - Rescan all
+ - Rescan root
+ - Remove root (confirm)
+
+### 10.4.3 Settings > Audio
+
+- **Preview Volume** (normative):
+ - Slider 0100.
+ - Applies only to Song List preview playback (10.2).
+- Optional: Music volume (if you do not rely on system volume).
+
+### 10.4.4 Settings > Scoring Timing
+
+- Manual mic delay baseline (ms).
+- Auto mic delay adjust ON/OFF (and status).
+- These settings affect the TV scoring timeline (Section 9).
+
+### 10.4.5 Settings > Gameplay
+
+- Line bonus ON/OFF (default ON).
+- Ready countdown before song start: ON/OFF (default ON).
+- Countdown length (seconds): integer 110 (default 3). Countdown ticks at 1 Hz: N, N-1, , 1, then start.
+- Optional: show pitch bars ON/OFF (visual only).
+
+### 10.4.6 Settings > Video
+
+- Video enabled ON/OFF (if disabled always use background/visualization fallback).
+
+## 10.5 Singing Screen
+
+**Minimum layout**
+- Lyrics line with progressive highlight.
+- Pitch bars (or equivalent) for each active singer (1 or 2).
+- Per-singer score: current total (and optionally note/golden breakdown).
+- If a singer disconnects: show Disconnected indicator for that lane and stop increasing that singers score.
+
+**Countdown**
+- Countdown before scoring begins is controlled by Settings > Gameplay:
+ - If Ready countdown is ON: show N-second countdown at 1 Hz (N from setting) then begin scoring.
+ - If OFF: begin scoring immediately.
+- If a required singer disconnects during countdown: cancel start and return to Assign Singers with an error message.
+
+**Pause**
+- Back opens Pause overlay:
+ - Resume
+ - Quit to Song List (confirm; clears assignment and stops playback)
+
+## 10.6 Results and Leaderboard
+
+### 10.6.1 Results (post-song)
+
+Show per singer:
+- Notes score, Golden score, Line bonus, Total (tens-rounded per USDX rules).
+- If disconnected mid-song: show Disconnected / No score after <time> (policy must match Section 7).
+
+Actions:
+- MVP has **no song queue**; returning to Song List is required to start another song.
+- Back to Song List
+- View Leaderboard (optional)
+- Play again (re-opens Assign Singers for the same song)
+
+### 10.6.2 Leaderboard (Top 5 per difficulty)
+
+- Display top 5 saved scores for this song, per difficulty bucket.
+- Fields: name/label and score (date optional).
+- Back returns to Results or Song List depending on entry point.
+
+# 11. Parity Test Suite
+
+## 11.1 Golden Parsing Fixtures
+
+ Create fixture pack: solo basic, duet overlap + swap, rap, variable BPM, video+videogap, instrumental.
+
+## 11.2 Golden Scoring Fixtures
+
+ Beat-indexed test streams (toneValid/toneAbs) with expected Notes/Golden/Line/Total outputs (exact).
+
+## 11.3 Live Network Tests
+
+ Jitter/loss/disconnect injection tests + acceptance thresholds.
+
+## 11.4 Test Report Format
+
+ Define required outputs: test_report.md + diffs + logs; PASS criteria gate.
+
+# Appendix A: Supported Tags Reference
+
+ Complete table of tags, units, defaults, and gameplay impact.
+
+# Appendix B: Protocol Schemas
+
+ JSON schemas for all messages.
+
+# Appendix C: Fixture Inventory
+
+Appendix C contains normative input fixtures and their expected, deterministic receiver-side reconstruction results.
+
+The fixtures in this appendix are NOT end-to-end scoring fixtures. They validate protocol parsing, ordering, timestamp handling, and the semantics of toneValid/toneAbs.
+
+General rules (applies to all Appendix C fixtures):
+- The receiver MUST be able to parse all messages and ignore unknown fields.
+- The receiver MUST reconstruct an ordered frame stream using frame.seq and/or frame.ts (see Section 9), independent of message arrival time.
+- The receiver MUST NOT interpret toneAbs=0 as silence. Silence/unvoiced is represented by toneValid=false.
+
+## C.1 gangnamstyle-normal-5s (protocol + ordered frames)
+
+Input file: appendixC_gangnamstyle_normal_5s_stream.json
+
+Expected result (receiver reconstruction):
+```json
+{
+  "batching": {
+    "batch_count": 50,
+    "batch_interval_ms": 100,
+    "frames_per_batch": 5
+  },
+  "covers_capture_time_ms": {
+    "duration": 4980,
+    "end": 4980,
+    "start": 0
+  },
+  "expected_receiver_reconstruction": {
+    "fps": 50.0,
+    "frame_count": 250,
+    "missing_toneAbs": 0,
+    "seq": {
+      "max": 249,
+      "min": 0,
+      "must_be_contiguous": true
+    },
+    "toneAbs_counts": {
+      "0": 25,
+      "1": 25,
+      "2": 25,
+      "3": 25,
+      "4": 25,
+      "5": 25,
+      "6": 25,
+      "7": 25,
+      "8": 25,
+      "9": 25
+    },
+    "toneValid_counts": {
+      "true": 250
+    },
+    "ts_ms": {
+      "max": 4980,
+      "min": 0,
+      "step": 20
+    }
+  },
+  "fixture_file": "appendixC_gangnamstyle_normal_5s_stream.json",
+  "notes": [
+    "toneAbs=0 does NOT mean silence. Silence/unvoiced MUST be represented by toneValid=false.",
+    "This fixture is synthetic and is used to validate protocol parsing, ordering, and basic pitch frame handling (not musical correctness)."
+  ]
+}
+```
+
+## C.2 gangnamstyle-rap-5s (unvoiced frames + large batches)
+
+Input file: appendixC_gangnamstyle_rap_5s_stream.json
+
+Expected result (receiver reconstruction):
+```json
+{
+  "batching": {
+    "batch_count": 10,
+    "batch_interval_ms": 500,
+    "frames_per_batch": 25
+  },
+  "covers_capture_time_ms": {
+    "duration": 4980,
+    "end": 4980,
+    "start": 0
+  },
+  "expected_receiver_reconstruction": {
+    "fps": 50.0,
+    "frame_count": 250,
+    "missing_toneAbs": 65,
+    "seq": {
+      "max": 249,
+      "min": 0,
+      "must_be_contiguous": true
+    },
+    "toneAbs_counts_for_toneValid_true": {
+      "0": 13,
+      "1": 18,
+      "2": 14,
+      "3": 17,
+      "4": 14,
+      "5": 16,
+      "6": 14,
+      "7": 17,
+      "8": 14,
+      "9": 17,
+      "10": 14,
+      "11": 17
+    },
+    "toneValid_counts": {
+      "false": 65,
+      "true": 185
+    },
+    "ts_ms": {
+      "max": 4980,
+      "min": 0,
+      "step": 20
+    }
+  },
+  "fixture_file": "appendixC_gangnamstyle_rap_5s_stream.json",
+  "notes": [
+    "For frames where toneValid=false, toneAbs is omitted. The receiver MUST treat those frames as unvoiced/silence for scoring and UI.",
+    "This fixture validates handling of intermittent unvoiced frames and larger batch sizes."
+  ]
+}
+```
+
+## C.3 Future scoring fixtures (reserved)
+
+Scoring fixtures (song + pitch stream + expected total score breakdown) are out of scope for Appendix C in v0.2. When added, each scoring fixture MUST provide:
+- Covered song_time_ms window and all timing assumptions (BPM, GAP, micDelayMs, and any drift correction settings).
+- Expected per-checkpoint state (active note id, judgement bucket) and final score totals.
+- Enough detail to reproduce results deterministically without referencing USDX source code.
