@@ -1,7 +1,7 @@
 Android Karaoke Game
 USDX Parity MVP Functional Specification
 
-Version: 0.2
+Version: 0.3
 
 Date: 2026-01-25
 
@@ -15,6 +15,7 @@ Status: Draft
 
 | Version | Date | Author | Changes |
 | --- | --- | --- | --- |
+| 0.3 | 2026-01-25 | Spec Bot | Make scoring and timing self-contained (ScoreFactor, Difficulty->Range, rounding); define toneAbs domain and toneValid thresholding; add explicit Table of Contents; move Song List+Search UI into Library section. |
 | 0.2 | 2026-01-25 | TBD | Add Appendix C expected results for pitch stream fixtures; add explicit fixture time windows; clarify toneAbs=0 is a valid pitch when toneValid=true. |
 | 0.1 | 2026-01-25 | TBD | Initial draft skeleton. |
 
