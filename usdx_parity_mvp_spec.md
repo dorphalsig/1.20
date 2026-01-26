@@ -973,6 +973,7 @@ This is the Add songs workflow.
  - On success: persist permission and add root.
 - Root list shows each root with:
  - status (OK / unavailable), last scan, song count.
+ - If a root is unavailable, the UI MUST offer a recovery action ("Re-grant access") that re-opens the SAF folder picker for that root and replaces the persisted permission URI on success.
 - Actions:
  - Rescan all
  - Rescan root
