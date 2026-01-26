@@ -681,7 +681,7 @@ Session state is owned by the TV host app.
  - Connection state (Connecting / Connected / Disconnected)
  - Current assigned role (Singer / Spectator) and player slot if applicable (P1/P2)
  - Live input level meter
- - Mute toggle
+ - Mute toggle: when enabled, the phone MUST continue to stay connected but MUST stream frames as unvoiced (equivalent to `toneValid=false` and no `toneAbs`) so the TV scores silence.
  - Leave session action
 
 ## 7.4 Disconnect/Reconnect
