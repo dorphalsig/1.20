@@ -241,6 +241,9 @@ Audio/video/instrumental files are validated for existence at load time:
  - `Everywhere` matches if any of {artist, album, title} match.
 - Selecting a result behaves exactly like selecting that song in the main list (i.e., proceeds to Assign Singers overlay, Section 10.3).
 
+**Result ordering (normative)**
+- Search results MUST preserve the same ordering as the main Song List (Artist -> Album -> Title), filtered by the current query.
+
 **Performance and memory constraints (normative for MVP)**
 - Live filtering MUST be implemented as **O(N)** scan over the in-memory song index, where `N` is the number of songs.
 - Input MUST be **debounced** by 150 ms.
