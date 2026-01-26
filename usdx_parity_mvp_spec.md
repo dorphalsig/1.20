@@ -241,6 +241,11 @@ Audio/video/instrumental files are validated for existence at load time:
  - `Everywhere` matches if any of {artist, album, title} match.
 - Selecting a result behaves exactly like selecting that song in the main list (i.e., proceeds to Assign Singers overlay, Section 10.3).
 
+**Focus and keyboard (normative)**
+- On opening Search, focus MUST start on the Query field and the software keyboard MUST open.
+- DPAD down from the keyboard focuses the Scope selector; DPAD down again focuses the Results list.
+- The Query field MUST provide a Clear action to erase the current query.
+
 **Result ordering (normative)**
 - Search results MUST preserve the same ordering as the main Song List (Artist -> Album -> Title), filtered by the current query.
 
