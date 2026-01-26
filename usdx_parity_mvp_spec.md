@@ -668,6 +668,12 @@ Session state is owned by the TV host app.
  - Additional phones MUST be rejected with an `error` (e.g., `code="slots_full"`).
 - During **Locked** state, new joins MUST be rejected with an `error` (e.g., `code="session_locked"`).
 
+**Roster actions (normative)**
+- **Rename device**: changes the display label shown on TV and stored by `clientId` for future use within the same session.
+- **Kick device**: disconnects the device immediately; the slot becomes available for another phone to join.
+- **Forget device**: removes the stored display label for that `clientId` and disconnects the device; a future join is treated as a fresh device with default name.
+- Kick/Forget MUST use a confirm dialog with default focus on Cancel.
+
 ## 7.3 Pairing UX (Phone)
 
 - Phone joins by scanning the TV QR code or entering the join code.
@@ -954,8 +960,9 @@ Settings is a simple list of items; selecting one opens a sub-screen.
 
 **Actions**
 - End session (confirm): invalidates the current session token, disconnects all phones, clears slot assignments, and immediately creates a new session in state Open.
-- Rename device (changes display label).
-- Forget/Kick device (optional; if implemented must be specified in Section 7).
+- Rename device: opens a rename dialog (TV on-screen keyboard), updates the stored label for that `clientId`.
+- Kick device: confirm then disconnect.
+- Forget device: confirm then remove the stored label for that `clientId` and disconnect.
 
 ### 10.4.2 Settings > Song Library
 
