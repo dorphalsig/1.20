@@ -80,6 +80,7 @@ Conventions:
   - 9.2 Auto Mic Delay Adjust (ON by default)
 - 10. UI Screens and Flows
   - 10.1 Global navigation and input
+  - 10.2 Song preview playback
   - 10.3 Assign Singers overlay (per-song)
   - 10.4 Settings Screen
   - 10.5 Singing Screen
@@ -838,6 +839,30 @@ This section is normative for MVP UI and navigation on Android TV.
 - **OK/Enter** selects highlighted item.
 - DPAD navigates focus in lists and menus.
 - If a software keyboard is shown (Search), Back closes keyboard first, then overlay.
+
+## 10.2 Song preview playback
+
+This section defines the MVP behavior for Song List preview playback (Section 3.4) and the related Preview Volume setting (10.4.3).
+
+**When preview plays (normative)**
+- A preview MAY start only when a song row is focused and focus remains unchanged for **600 ms**.
+- Preview MUST stop immediately when:
+ - focus moves to a different song row
+ - Search overlay opens
+ - Settings opens
+ - Assign Singers opens
+ - Singing starts
+
+**What plays (normative)**
+- Preview duration: **10 seconds**.
+- Preview start time:
+ - `#PREVIEWSTART` if present
+ - otherwise `#START` if present
+ - otherwise 0.0 seconds (implementations MAY choose the first note start time)
+
+**Concurrency and audio routing (normative)**
+- Preview MUST NOT overlap with full song playback.
+- Preview volume uses **Settings > Audio > Preview Volume**. A value of 0 MUST result in silence (effectively disabling preview).
 
 ## 10.3 Assign Singers overlay (per-song)
 
