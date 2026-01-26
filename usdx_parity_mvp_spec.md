@@ -988,6 +988,10 @@ This is the Add songs workflow.
  - Rescan root
  - Remove root (confirm)
 
+**Rescan UX (normative)**
+- While scanning, the UI MUST show an in-progress status (e.g., "Scanning…") and MUST remain responsive.
+- The user MUST be able to cancel an in-progress rescan via Back; cancellation leaves the last successful index intact.
+
 **Scan issues (normative)**
 - The Song Library screen MUST provide a way to view invalid-song diagnostics captured during scanning (Section 3.2).
 - Present a list where each row contains: song path (or display title if parseable), error reason, and error line number.
