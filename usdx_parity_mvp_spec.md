@@ -641,19 +641,49 @@ Use the exact rounding rules above and compute total as shown.
 
 ## 7.1 Session States
 
- No Session / Open / Locked / Ended. Locked during song; reconnect allowed.
+Session state is owned by the TV host app.
+
+**States (normative)**
+- **Open**: phones may join and occupy player slots.
+- **Locked**: a song is in progress; new joins are rejected (existing phones may reconnect).
+- **Ended**: the current session token is invalid; all phones must join a new session.
+
+**Lifecycle (normative)**
+- On TV app launch, the host MUST create a new session in state **Open** and display pairing info.
+- When Singing starts, the session enters **Locked**.
+- When the user returns to Song List after song end/quit, the session returns to **Open**.
+- The session enters **Ended** only when the host explicitly ends it via Settings > Connect Phones (**End session**) or when the app is closed.
+
+**Pairing across sessions (normative for MVP)**
+- Reconnect-within-session is supported (Section 7.4).
+- Persistent slot ownership across sessions is NOT supported: on a new session, phones are assigned by join order (Section 7.2).
 
 ## 7.2 Pairing UX (TV)
 
- TV shows QR + code; two slots P1/P2; auto-assign first phone to P1, second to P2; kick/forget.
+- TV shows QR code and a short join code representing the current session endpoint (Section 8.1).
+- TV shows two player slots (**P1**, **P2**) with the connected device names.
+- Auto-assign by join order (normative):
+ - First connected phone occupies **P1**.
+ - Second connected phone occupies **P2**.
+ - Additional phones MUST be rejected with an `error` (e.g., `code="slots_full"`).
+- During **Locked** state, new joins MUST be rejected with an `error` (e.g., `code="session_locked"`).
 
 ## 7.3 Pairing UX (Phone)
 
- Join by QR/code; show connection, level meter, mute; leave session.
+- Phone joins by scanning the TV QR code or entering the join code.
+- Phone shows:
+ - Connection state (Connecting / Connected / Disconnected)
+ - Current assigned role (Singer / Spectator) and player slot if applicable (P1/P2)
+ - Live input level meter
+ - Mute toggle
+ - Leave session action
 
 ## 7.4 Disconnect/Reconnect
 
- No pause. Disconnected player = No-Score until reconnect; reconnect reclaims slot by clientId if possible.
+- Gameplay does not pause on disconnect.
+- While disconnected, that player contributes no pitch frames and MUST receive no additional score.
+- If the same phone reconnects within the same session, it SHOULD reclaim its prior slot using `clientId` (Section 8.2 `hello`).
+- If the prior slot is no longer available, reconnect is treated as a fresh join and follows the join-order assignment rules (Section 7.2).
 
 # 8. Network Protocol
 
@@ -923,6 +953,7 @@ Settings is a simple list of items; selecting one opens a sub-screen.
  - Optional: latency indicator.
 
 **Actions**
+- End session (confirm): invalidates the current session token, disconnects all phones, clears slot assignments, and immediately creates a new session in state Open.
 - Rename device (changes display label).
 - Forget/Kick device (optional; if implemented must be specified in Section 7).
 
