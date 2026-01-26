@@ -1014,7 +1014,7 @@ This is the Add songs workflow.
 - Lyrics line with progressive highlight.
 - Pitch bars (or equivalent) for each active singer (1 or 2).
 - Per-singer score: current total (and optionally note/golden breakdown).
-- If a singer disconnects: show Disconnected indicator for that lane and stop increasing that singers score.
+- If a singer disconnects: show Disconnected indicator for that lane and stop increasing that singer's score while disconnected; on reconnect within the same session, scoring resumes (Section 7.4).
 
 **Countdown**
 - Countdown before scoring begins is controlled by Settings > Gameplay:
@@ -1033,7 +1033,7 @@ This is the Add songs workflow.
 
 Show per singer:
 - Notes score, Golden score, Line bonus, Total (tens-rounded per USDX rules).
-- If disconnected mid-song: show Disconnected / No score after <time> (policy must match Section 7).
+- If disconnected mid-song: show a Disconnected indicator and the total disconnected time (and/or number of disconnect intervals) for that singer.
 
 Actions:
 - MVP has **no song queue**; returning to Song List is required to start another song.
