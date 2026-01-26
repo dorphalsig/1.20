@@ -921,6 +921,10 @@ This section defines the MVP behavior for Song List preview playback (Section 3.
  - Singer 1 required.
  - Singer 2 optional; if selected, both singers sing the same track and are scored independently.
 
+**Empty/error states (normative)**
+- If no phones are connected, show a blocking message "No phones connected" and a primary action to open Settings > Connect Phones.
+- If the song is a duet and fewer than two phones are connected, show a blocking message "Duet requires 2 phones" and the same primary action.
+
 **Actions**
 - Start: begins countdown then singing.
 - Cancel/Back: returns to Song List.
