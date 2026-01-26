@@ -1029,7 +1029,7 @@ This is the Add songs workflow.
 **Pause**
 - Back opens Pause overlay:
  - Resume
- - Quit to Song List (confirm; clears assignment and stops playback)
+ - Quit to Song List (confirm; clears assignment and stops playback). The confirm dialog MUST default focus to Cancel.
 
 ## 10.6 Results and Leaderboard
 
