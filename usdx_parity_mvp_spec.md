@@ -84,7 +84,7 @@ Conventions:
   - 10.3 Assign Singers overlay (per-song)
   - 10.4 Settings Screen
   - 10.5 Singing Screen
-  - 10.6 Results and Leaderboard
+  - 10.6 Results
 - 11. Parity Test Suite
   - 11.1 Golden Parsing Fixtures
   - 11.2 Golden Scoring Fixtures
@@ -192,7 +192,7 @@ Audio/video/instrumental files are validated for existence at load time:
 **MVP parity requirements**
 - Mirror the recursive `.txt` discovery behavior.
 - Reject songs missing the required header fields or required audio file.
-- Keep invalid song diagnostics (error line number + reason) for UI display.
+- Keep invalid song diagnostics (error line number + reason) for export/troubleshooting.
 
 ## 3.3 Index Fields (Functional)
 
@@ -210,6 +210,9 @@ Audio/video/instrumental files are validated for existence at load time:
 - **Settings** button: opens Settings screen.
 - **Search** button: opens Search overlay (see Section 3.5).
 
+**Pairing (on landing)**
+- The landing screen MUST display only the session join QR code and short join code (no roster on the landing screen).
+
 **Empty state**
 - If no songs are indexed, show:
  - No songs found.
@@ -225,6 +228,29 @@ Audio/video/instrumental files are validated for existence at load time:
 **Song preview**
 - MVP: 10s audio preview starting at `#PREVIEWSTART` if present; otherwise start at `#START` if present, else start at 0.0 seconds (or optionally the first note).
 (USDX editor uses PREVIEWSTART heavily; selection-screen preview behavior is theme-dependent, so we define MVP behavior here.)
+
+**Wireframe (USDX-aligned, spec-limited interactions)**
+```text
++--------------------------------------------------------------------------------+
+| ● song selection                                      ultrastar (clone)        |
+|   choose your song                                                             |
++--------------------------------------------------------------------------------+
+|                                                                                |
+|   [Cover - Prev]        [Cover - Selected]           [Cover - Next]            |
+|                                                                                |
+|                      +---------------------------+                              |
+|                      |         ARTIST           |                              |
+|                      |         Title            |                              |
+|                      |                     6/86 |                              |
+|                      +---------------------------+                              |
+|                                                                                |
+|  Pair / Join (landing: only QR + code)                                         |
+|     [  QR  ]     Code: ABCD                                                    |
+|                                                                                |
++--------------------------------------------------------------------------------+
+| Hints:  OK=Select Song   Search=Filter   Settings=Config   Back=Exit            |
++--------------------------------------------------------------------------------+
+```
 
 ## 3.5 Search (MVP)
 
@@ -245,6 +271,23 @@ Audio/video/instrumental files are validated for existence at load time:
 - On opening Search, focus MUST start on the Query field and the software keyboard MUST open.
 - DPAD down from the keyboard focuses the Scope selector; DPAD down again focuses the Results list.
 - The Query field MUST provide a Clear action to erase the current query.
+
+**Wireframe (spec interactions; USDX-style modal)**
+```text
++--------------------------------------------------------------------------------+
+| SEARCH                                                                          |
++--------------------------------------------------------------------------------+
+| Query: [ psy____________________ ]     [Clear]                                 |
+| Scope:  (• Everywhere) (  Artist) (  Album) (  Song)                           |
++--------------------------------------------------------------------------------+
+| Results (max 50; ordered like main list)                                       |
+|  > PSY — Gangnam Style                                                         |
+|    PSY — Gentleman                                                             |
+|    ...                                                                         |
++--------------------------------------------------------------------------------+
+| Hints: OK=Select Song   Back=Close                                              |
++--------------------------------------------------------------------------------+
+```
 
 **Result ordering (normative)**
 - Search results MUST preserve the same ordering as the main Song List (Artist -> Album -> Title), filtered by the current query.
@@ -649,7 +692,7 @@ Use the exact rounding rules above and compute total as shown.
 Session state is owned by the TV host app.
 
 **States (normative)**
-- **Open**: phones may join and occupy player slots.
+- **Open**: phones may join and appear in the connected-roster.
 - **Locked**: a song is in progress; new joins are rejected (existing phones may reconnect).
 - **Ended**: the current session token is invalid; all phones must join a new session.
 
@@ -661,21 +704,20 @@ Session state is owned by the TV host app.
 
 **Pairing across sessions (normative for MVP)**
 - Reconnect-within-session is supported (Section 7.4).
-- Persistent slot ownership across sessions is NOT supported: on a new session, phones are assigned by join order (Section 7.2).
+- Persistent singer assignment across sessions is NOT supported: on a new session, all phones join as spectators until assigned for a song (Section 10.3).
 
 ## 7.2 Pairing UX (TV)
 
 - TV shows QR code and a short join code representing the current session endpoint (Section 8.1).
-- TV shows two player slots (**P1**, **P2**) with the connected device names.
-- Auto-assign by join order (normative):
- - First connected phone occupies **P1**.
- - Second connected phone occupies **P2**.
- - Additional phones MUST be rejected with an `error` (e.g., `code="slots_full"`).
+- TV shows a roster of connected device names (up to **10**).
+- Join admission (normative):
+ - Phones MAY join while the session is **Open** until the roster reaches 10 devices.
+ - Additional phones MUST be rejected with an `error` (e.g., `code="session_full"`).
 - During **Locked** state, new joins MUST be rejected with an `error` (e.g., `code="session_locked"`).
 
 **Roster actions (normative)**
 - **Rename device**: changes the display label shown on TV and stored by `clientId` for future use within the same session.
-- **Kick device**: disconnects the device immediately; the slot becomes available for another phone to join.
+- **Kick device**: disconnects the device immediately; the roster entry is removed.
 - **Forget device**: removes the stored display label for that `clientId` and disconnects the device; a future join is treated as a fresh device with default name.
 - Kick/Forget MUST use a confirm dialog with default focus on Cancel.
 
@@ -684,17 +726,57 @@ Session state is owned by the TV host app.
 - Phone joins by scanning the TV QR code or entering the join code.
 - Phone shows:
  - Connection state (Connecting / Connected / Disconnected)
- - Current assigned role (Singer / Spectator) and player slot if applicable (P1/P2)
+ - Current assigned role (Singer / Spectator); if Singer, show playerId (P1/P2)
  - Live input level meter
  - Mute toggle: when enabled, the phone MUST continue to stay connected but MUST stream frames as unvoiced (equivalent to `toneValid=false` and no `toneAbs`) so the TV scores silence.
  - Leave session action
+
+**Wireframes (phone app, spec-only interactions)**
+```text
+Join screen
+
++----------------------------------+
+| JOIN SESSION                      |
++----------------------------------+
+| [Scan QR]                         |
+| or enter code: [ ABCD ] [Join]    |
+|                                  |
+| Status: Disconnected              |
++----------------------------------+
+
+Connected (Spectator)
+
++----------------------------------+
+| CONNECTED                         |
++----------------------------------+
+| Role: Spectator                   |
+| Input level:  |||||||             |
+| Mute: [OFF] (streams silence when ON)
+|                                  |
+| [Leave session]                   |
++----------------------------------+
+
+Assigned as Singer (during a song)
+
++----------------------------------+
+| CONNECTED                         |
++----------------------------------+
+| Role: Singer (P1)                 |
+| Status: Waiting / Singing         |
+| Input level:  |||||||||           |
+| Mute: [OFF]                       |
+|                                  |
+| [Leave session]                   |
++----------------------------------+
+```
 
 ## 7.4 Disconnect/Reconnect
 
 - Gameplay does not pause on disconnect.
 - While disconnected, that player contributes no pitch frames and MUST receive no additional score.
-- If the same phone reconnects within the same session, it SHOULD reclaim its prior slot using `clientId` (Section 8.2 `hello`).
-- If the prior slot is no longer available, reconnect is treated as a fresh join and follows the join-order assignment rules (Section 7.2).
+- If the same phone reconnects within the same session, it SHOULD reclaim its prior identity using `clientId` (Section 8.2 `hello`).
+- If the phone was assigned as a Singer when it disconnected, it MUST resume that role on reconnect (unless the host has cleared assignments).
+- If the session roster is full and the reconnect cannot be matched to an existing `clientId`, the reconnect MUST be rejected with `code="session_full"`.
 
 # 8. Network Protocol
 
@@ -915,28 +997,79 @@ This section defines the MVP behavior for Song List preview playback (Section 3.
 
 **Fields**
 - Singer 1 device: required (list of connected phones).
-- Singer 2 device: optional; **required if the song is a duet**.
+- Singer 2 device: optional.
 - Difficulty per singer: Easy / Medium / Hard.
-- If duet: **Swap Parts** toggle (DuetChange) applied to P1/P2 tracks.
+- If duet:
+ - If two singers are selected: assign Singer 1 to P1 and Singer 2 to P2; provide a **Swap Parts** action that swaps which device sings P1 vs P2.
+ - If only one singer is selected: allow selecting which duet part is sung (P1 or P2).
 
 **Gating rules**
 - Duet songs:
- - Start is blocked until Singer 1 and Singer 2 are both selected and connected.
+ - Singer 1 required.
+ - Singer 2 optional.
 - Non-duet songs:
  - Singer 1 required.
  - Singer 2 optional; if selected, both singers sing the same track and are scored independently.
 
 **Empty/error states (normative)**
 - If no phones are connected, show a blocking message "No phones connected" and a primary action to open Settings > Connect Phones.
-- If the song is a duet and fewer than two phones are connected, show a blocking message "Duet requires 2 phones" and the same primary action.
 
 **Actions**
 - Start: begins countdown then singing.
 - Cancel/Back: returns to Song List.
 
+**Wireframes (TV modal, spec-only interactions)**
+```text
+Non-duet song
+
++--------------------------------------------------------------------------------+
+| ASSIGN SINGERS                                               Song: <Artist> — <Title> |
++--------------------------------------------------------------------------------+
+| Singer (required)                                                              |
+|  Phone:      [ Pixel-7 ▾ ]   (dropdown lists connected phone names)            |
+|  Difficulty: [ Medium ▾ ]                                                      |
++--------------------------------------------------------------------------------+
+| [Start]   [Cancel]                                                             |
++--------------------------------------------------------------------------------+
+| Hints: OK=Change/Select   Back=Cancel                                           |
++--------------------------------------------------------------------------------+
+
+Duet song
+
++--------------------------------------------------------------------------------+
+| ASSIGN SINGERS (DUET)                                      Song: <Artist> — <Title> |
++--------------------------------------------------------------------------------+
+| Singer 1 (P1)                                Singer 2 (P2)                      |
+|  Phone: [ Pixel-7 ▾ ]                        Phone: [ (none) ▾ ] (optional)    |
+|  Difficulty: [ Medium ▾ ]                    Difficulty: [ Medium ▾ ]          |
+|                                                                                |
+| If Singer 2 is (none):  Solo duet part:  (• P1) (  P2)                         |
+| If both singers selected:  [Swap Parts]                                        |
++--------------------------------------------------------------------------------+
+| [Start]   [Cancel]                                                             |
++--------------------------------------------------------------------------------+
+| Hints: OK=Select   Back=Cancel                                                  |
++--------------------------------------------------------------------------------+
+
+Blocking state (no phones connected)
+
++--------------------------------------------------------------------------------+
+| ASSIGN SINGERS                                                                  |
++--------------------------------------------------------------------------------+
+| ⚠ No phones connected.                                                         |
+|   Connect phones in Settings to sing.                                          |
+|                                                                                |
+| [Open Settings > Connect Phones]   [Cancel]                                    |
++--------------------------------------------------------------------------------+
+```
+
 **Protocol side effects (normative)**
 - On Start, TV sends `assignSinger` to each connected phone:
- - Selected devices get `role="singer"` with `playerId="P1"` for Singer 1 and `"P2"` for Singer 2.
+ - Selected devices get `role="singer"` with `playerId`:
+  - For non-duet songs: Singer 1 -> `P1`; if Singer 2 selected -> `P2`.
+  - For duet songs:
+   - If two singers selected: Singer 1 -> `P1`, Singer 2 -> `P2` (swapped if the user selects Swap Parts).
+   - If one singer selected: `P1` or `P2` based on the user's duet-part selection.
  - Non-selected devices MAY receive `role="spectator"` (or receive no message).
 - When a song ends or user quits:
  - TV sends `assignSinger` with `role="spectator"` (clears assignment).
@@ -955,6 +1088,22 @@ Settings is a simple list of items; selecting one opens a sub-screen.
 - Video
 - Debug (optional)
 
+**Wireframe (TV Settings root)**
+```text
++--------------------------------------+
+| SETTINGS                              |
+|  > Connect Phones                     |
+|    Song Library                       |
+|    Audio                              |
+|    Scoring Timing                     |
+|    Gameplay                           |
+|    Video                              |
+|    Debug (optional)                   |
++--------------------------------------+
+| Hints: OK=Open   Back=Return          |
++--------------------------------------+
+```
+
 ### 10.4.1 Settings > Connect Phones
 
 **Purpose**
@@ -972,6 +1121,26 @@ Settings is a simple list of items; selecting one opens a sub-screen.
 - Rename device: opens a rename dialog (TV on-screen keyboard), updates the stored label for that `clientId`.
 - Kick device: confirm then disconnect.
 - Forget device: confirm then remove the stored label for that `clientId` and disconnect.
+
+**Wireframe (Connect Phones)**
+```text
++--------------------------------------------------------------------------------+
+| SETTINGS > CONNECT PHONES                                                      |
++--------------------------------------------------------------------------------+
+| Join this session:                                                             |
+|   [   QR CODE   ]             Code: ABCD                                       |
+|                                                                                |
+| Connected devices (up to 10):                                                  |
+|  > Pixel-7        Connected                                                    |
+|    iPhone-13      Connected                                                    |
+|    ...                                                                         |
+|                                                                                |
+| Actions on selected device:  [Rename] [Kick] [Forget]                           |
+| Session: [End session] (confirm)                                               |
++--------------------------------------------------------------------------------+
+| Hints: OK=Select/Action   Back=Return                                          |
++--------------------------------------------------------------------------------+
+```
 
 ### 10.4.2 Settings > Song Library
 
@@ -993,9 +1162,28 @@ This is the Add songs workflow.
 - The user MUST be able to cancel an in-progress rescan via Back; cancellation leaves the last successful index intact.
 
 **Scan issues (normative)**
-- The Song Library screen MUST provide a way to view invalid-song diagnostics captured during scanning (Section 3.2).
-- Present a list where each row contains: song path (or display title if parseable), error reason, and error line number.
-- The screen MUST include a shortcut action to rescan the relevant root.
+- The Song Library screen MUST provide a way to export invalid-song diagnostics captured during scanning (Section 3.2).
+- Export MUST include: song path, error reason, and error line number.
+- The UI MAY show an in-app list, but MVP only requires an export action.
+
+**Wireframe (Song Library)**
+```text
++--------------------------------------------------------------------------------+
+| SETTINGS > SONG LIBRARY                                                        |
++--------------------------------------------------------------------------------+
+| [Add songs folder]                                                             |
+|                                                                                |
+| Roots                                                                           |
+|  > /storage/.../SongsA     OK          last scan: 2026-01-27   songs: 123       |
+|    /storage/.../SongsB     UNAVAILABLE last scan: 2026-01-20   songs:  87       |
+|        [Re-grant access]                                                       |
+|                                                                                |
+| Actions: [Rescan all]  [Rescan root]  [Remove root]                            |
+| Diagnostics: [Export invalid-song diagnostics]                                 |
++--------------------------------------------------------------------------------+
+| Hints: OK=Select/Action   Back=Return                                          |
++--------------------------------------------------------------------------------+
+```
 
 ### 10.4.3 Settings > Audio
 
@@ -1004,11 +1192,36 @@ This is the Add songs workflow.
  - Applies only to Song List preview playback (10.2).
 - Optional: Music volume (if you do not rely on system volume).
 
+**Wireframe (Audio)**
+```text
++--------------------------------------+
+| SETTINGS > AUDIO                      |
++--------------------------------------+
+| Preview Volume: [=====|-----]  60     |
+| (Optional) Music Volume: [====|----]  |
++--------------------------------------+
+| Hints: Left/Right=Adjust  Back=Return |
++--------------------------------------+
+```
+
 ### 10.4.4 Settings > Scoring Timing
 
 - Manual mic delay baseline (ms).
 - Auto mic delay adjust ON/OFF (and status).
 - These settings affect the TV scoring timeline (Section 9).
+
+**Wireframe (Scoring Timing)**
+```text
++--------------------------------------+
+| SETTINGS > SCORING TIMING             |
++--------------------------------------+
+| Manual mic delay (ms):   0            |
+| Auto mic delay adjust:   ON           |
+| Status:                  Calibrated   |
++--------------------------------------+
+| Hints: OK=Toggle/Edit  Back=Return    |
++--------------------------------------+
+```
 
 ### 10.4.5 Settings > Gameplay
 
@@ -1017,9 +1230,34 @@ This is the Add songs workflow.
 - Countdown length (seconds): integer 110 (default 3). Countdown ticks at 1 Hz: N, N-1, , 1, then start.
 - Optional: show pitch bars ON/OFF (visual only).
 
+**Wireframe (Gameplay)**
+```text
++--------------------------------------+
+| SETTINGS > GAMEPLAY                   |
++--------------------------------------+
+| Line bonus:             ON            |
+| Ready countdown:        ON            |
+| Countdown seconds:      3             |
+| Show pitch bars:        ON            |
++--------------------------------------+
+| Hints: OK=Toggle/Edit  Back=Return    |
++--------------------------------------+
+```
+
 ### 10.4.6 Settings > Video
 
 - Video enabled ON/OFF (if disabled always use background/visualization fallback).
+
+**Wireframe (Video)**
+```text
++--------------------------------------+
+| SETTINGS > VIDEO                      |
++--------------------------------------+
+| Video enabled:          ON            |
++--------------------------------------+
+| Hints: OK=Toggle  Back=Return         |
++--------------------------------------+
+```
 
 ## 10.5 Singing Screen
 
@@ -1040,7 +1278,56 @@ This is the Add songs workflow.
  - Resume
  - Quit to Song List (confirm; clears assignment and stops playback). The confirm dialog MUST default focus to Cancel.
 
-## 10.6 Results and Leaderboard
+**Wireframes (USDX-aligned, spec-only interactions)**
+```text
+Active singing screen (composition matches USDX)
+
++--------------------------------------------------------------------------------+
+|                          (FULLSCREEN VIDEO / BACKGROUND)                       |
+|                                                                                |
+| P1 [badge]                                                                     |
+|  ───────────────────────────────────────────────────────────────────────────   |
+|   [note bars / pitch lane P1]                                                  |
+|                                                                +--------+      |
+|                                                                | 00710  |      |
+|                                                                +--------+      |
+|                                                                perfect!        |
+|                                                                                |
+| P2 [badge]                                                                     |
+|  ───────────────────────────────────────────────────────────────────────────   |
+|   [note bars / pitch lane P2]                                                  |
+|                                                                +--------+      |
+|                                                                | 00720  |      |
+|                                                                +--------+      |
+|                                                                perfect!        |
+|                                                                                |
++--------------------------------------------------------------------------------+
+| Lyrics (USDX style: active syllables highlighted)                               |
+|   CUz this life is too short                                                   |
+|   to live it just for you                                                      |
++--------------------------------------------------------------------------------+
+|                                                                      00:35     |
++--------------------------------------------------------------------------------+
+
+Countdown overlay (before playback starts; 1 Hz)
+
++--------------------------------------------------------------------------------+
+|                                                                                |
+|                                     3                                          |
+|                                                                                |
++--------------------------------------------------------------------------------+
+(then 2, 1, 0; at 0 playback + scoring start)
+
+Pause overlay (Back)
+
++--------------------------------------+
+| PAUSED                               |
+|  > Resume                            |
+|    Quit to Song List                 |
++--------------------------------------+
+```
+
+## 10.6 Results
 
 ### 10.6.1 Results (post-song)
 
@@ -1051,14 +1338,26 @@ Show per singer:
 Actions:
 - MVP has **no song queue**; returning to Song List is required to start another song.
 - Back to Song List
-- View Leaderboard (optional)
 - Play again (re-opens Assign Singers for the same song)
 
-### 10.6.2 Leaderboard (Top 5 per difficulty)
-
-- Display top 5 saved scores for this song, per difficulty bucket.
-- Fields: name/label and score (date optional).
-- Back returns to Results or Song List depending on entry point.
+**Wireframe (USDX Song Punkte layout; spec-only actions)**
+```text
++--------------------------------------------------------------------------------+
+| Song Punkte                                                                    |
+| <Artist> — <Title>                                                             |
++--------------------------------------------------------------------------------+
+| P1: <PhoneName>                                  | Comparison |     P2: <PhoneName> |
+|                                                                                |
+| Notes score        00000                          |█████       |   Notes score        00000 |
+| Golden score       00000                          |███████     |   Golden score       00000 |
+| Line bonus         00000                          |████        |   Line bonus         00000 |
+|                                                                                |
+| TOTAL             00000                           |██████      |   TOTAL             00000 |
+|                                                                                |
++--------------------------------------------------------------------------------+
+| [Play Again]   [Back to Song List]                                             |
++--------------------------------------------------------------------------------+
+```
 
 # 11. Parity Test Suite
 
