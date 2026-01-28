@@ -721,6 +721,25 @@ Session state is owned by the TV host app.
 - **Forget device**: removes the stored display label for that `clientId` and disconnects the device; a future join is treated as a fresh device with default name.
 - Kick/Forget MUST use a confirm dialog with default focus on Cancel.
 
+**Wireframe (TV pairing info + roster management; spec-only interactions)**
+```text
++--------------------------------------------------------------------------------+
+| PAIR / JOIN                                                                    |
++--------------------------------------------------------------------------------+
+| Join this session:                                                             |
+|   [   QR CODE   ]             Code: ABCD                                       |
+|                                                                                |
+| Connected devices (up to 10):                                                  |
+|  > Pixel-7        Connected                                                    |
+|    iPhone-13      Connected                                                    |
+|    ...                                                                         |
+|                                                                                |
+| Actions on selected device:  [Rename] [Kick] [Forget]                         |
++--------------------------------------------------------------------------------+
+| Hints: OK=Select/Action   Back=Return                                          |
++--------------------------------------------------------------------------------+
+```
+
 ## 7.3 Pairing UX (Phone)
 
 - Phone joins by scanning the TV QR code or entering the join code.
@@ -767,6 +786,44 @@ Assigned as Singer (during a song)
 | Mute: [OFF]                       |
 |                                  |
 | [Leave session]                   |
++----------------------------------+
+```
+
+**Join rejection UX (normative)**
+- If the TV rejects a join with an `error`, the phone MUST show a blocking error message and return to the Join screen.
+- Minimum user action is `OK` (dismiss) or Back.
+
+**Wireframes (phone join rejected; spec-only interactions)**
+```text
+Session locked
+
++----------------------------------+
+| ERROR                             |
++----------------------------------+
+| Session is locked.                |
+| (A song is in progress.)          |
+|                                  |
+| [OK]                              |
++----------------------------------+
+
+Session full
+
++----------------------------------+
+| ERROR                             |
++----------------------------------+
+| Session is full.                  |
+|                                  |
+| [OK]                              |
++----------------------------------+
+
+Protocol mismatch
+
++----------------------------------+
+| ERROR                             |
++----------------------------------+
+| Protocol mismatch.                |
+|                                  |
+| [OK]                              |
 +----------------------------------+
 ```
 
@@ -1142,6 +1199,30 @@ Settings is a simple list of items; selecting one opens a sub-screen.
 +--------------------------------------------------------------------------------+
 ```
 
+**Wireframe (confirm dialog; default focus Cancel)**
+```text
++--------------------------------------+
+| CONFIRM                              |
+| Kick <DeviceName>?                   |
+|                                      |
+|  > Cancel     OK                     |
++--------------------------------------+
+
++--------------------------------------+
+| CONFIRM                              |
+| Forget <DeviceName>?                 |
+|                                      |
+|  > Cancel     OK                     |
++--------------------------------------+
+
++--------------------------------------+
+| CONFIRM                              |
+| End session?                         |
+|                                      |
+|  > Cancel     OK                     |
++--------------------------------------+
+```
+
 ### 10.4.2 Settings > Song Library
 
 This is the Add songs workflow.
@@ -1160,6 +1241,21 @@ This is the Add songs workflow.
 **Rescan UX (normative)**
 - While scanning, the UI MUST show an in-progress status (e.g., "Scanning…") and MUST remain responsive.
 - The user MUST be able to cancel an in-progress rescan via Back; cancellation leaves the last successful index intact.
+
+**Wireframe (Song Library while scanning; spec-only interactions)**
+```text
++--------------------------------------------------------------------------------+
+| SETTINGS > SONG LIBRARY                                                        |
++--------------------------------------------------------------------------------+
+| Status: Scanning…   (Back = Cancel)                                            |
+|                                                                                |
+| Roots                                                                           |
+|  > /storage/.../SongsA     OK          last scan: 2026-01-27   songs: 123       |
+|    /storage/.../SongsB     UNAVAILABLE last scan: 2026-01-20   songs:  87       |
+|        [Re-grant access]                                                       |
+|                                                                                |
++--------------------------------------------------------------------------------+
+```
 
 **Scan issues (normative)**
 - The Song Library screen MUST provide a way to export invalid-song diagnostics captured during scanning (Section 3.2).
@@ -1324,6 +1420,15 @@ Pause overlay (Back)
 | PAUSED                               |
 |  > Resume                            |
 |    Quit to Song List                 |
++--------------------------------------+
+
+Quit confirm (default focus Cancel)
+
++--------------------------------------+
+| CONFIRM                              |
+| Quit to Song List?                   |
+|                                      |
+|  > Cancel     OK                     |
 +--------------------------------------+
 ```
 
