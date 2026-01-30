@@ -1,9 +1,9 @@
 Android Karaoke Game
 USDX Parity MVP Functional Specification
 
-Version: 0.3
+Version: 1.1
 
-Date: 2026-01-25
+Date: 2026-01-30
 
 Owner: TBD
 
@@ -15,18 +15,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
-| 2026-01-30 05:26 CET | TBD | Align header-start detection with USDX: stop header parsing unless the line begins with `#` (empty lines end header). |
-| 2026-01-30 05:25 CET | TBD | Define duplicate known header tags behavior: last successfully parsed value wins (USDX-aligned). |
-| 2026-01-30 05:24 CET | TBD | Specify legacy `#RELATIVE:YES` semantics (format <1.0.0) including per-track Rel[] accumulator and BPM-change startBeat shifting, matching USDX. |
-| 2026-01-30 05:23 CET | TBD | Align `#VERSION` handling with USDX: default to legacy 0.3.0 when absent; require parse when present; reject versions >= 2.0.0. |
-| 2026-01-30 05:22 CET | TBD | Align `#GAP` with USDX parsing: treat GAP as float milliseconds (fractional ms allowed) and define `GAPms` accordingly. |
-| 2026-01-30 04:56 CET | TBD | Specify an NTP-lite clock sync (4 timestamps + best-of-N) for mapping phone tCaptureMs to TV time. |
-| 2026-01-30 04:55 CET | TBD | Define maxAmp normalization for phone voicing thresholding (0..1) to remove ambiguity. |
-| 2026-01-30 04:53 CET | TBD | Align audio tag requirements with USDX: require AUDIO or MP3 (not version-gated); resolve relative paths against the .txt directory (subpaths allowed). |
-| 2026-01-30 04:49 CET | TBD | Align pitch protocol with USDX: phone sends MIDI note numbers; TV derives USDX tone scale (C2=0) and applies USDX octave normalization. |
-| 2026-01-30 04:47 CET | TBD | Align variable-BPM time->beat conversion with USDX: clamp tSec<=0 to beat 0. |
-| 2026-01-30 04:46 CET | TBD | Align beat model with USDX: do not scale note/sentence/B-line beats; only scale BPM by 4. |
-| 2026-01-30 04:45 CET | TBD | Add rolling change record; future edits must append here and prune entries older than 4 hours. |
+| 2026-01-30 14:46 CET | TBD | Remove all prior acceptance test artifact references (Section 11 + Appendices C/D) to allow new acceptance criteria content. |
 
 
 
@@ -41,8 +30,6 @@ Conventions:
 - Paritiy-critical = must match USDX behavior for compatibility.
 
 - Defaults are explicitly stated; if not, behavior is unspecified and must be decided.
-
-
 
 # Table of Contents
 
@@ -94,18 +81,8 @@ Conventions:
   - 10.4 Settings Screen
   - 10.5 Singing Screen
   - 10.6 Results
-- 11. Parity Test Suite
-  - 11.1 Golden Parsing Fixtures
-  - 11.2 Golden Scoring Fixtures
-  - 11.3 Live Network Tests
-  - 11.4 Test Report Format
 - Appendix A: Supported Tags Reference
 - Appendix B: Protocol Schemas
-- Appendix C: Fixture Inventory
-  - C.1 gangnamstyle-normal-5s (protocol + ordered frames)
-  - C.2 gangnamstyle-rap-5s (unvoiced frames + large batches)
-  - C.3 Future scoring fixtures (reserved)
-
 
 # 1. Product Contract
 
@@ -137,7 +114,7 @@ Conventions:
 
 ## 1.2 Definition of Done
 
-Paritiy MVP PASS requires all golden parsing and scoring fixtures to match expected results, plus functional pairing and play flows operating reliably on typical home Wi-Fi (see Section 11).
+Parity MVP PASS requires all parity-critical behaviors in this spec to be met, plus functional pairing and play flows operating reliably on typical home Wi-Fi.
 
 # 2. Architecture Overview
 
@@ -1539,24 +1516,6 @@ Actions:
 +--------------------------------------------------------------------------------+
 ```
 
-# 11. Parity Test Suite
-
-## 11.1 Golden Parsing Fixtures
-
- Create fixture pack: solo basic, duet overlap + swap, rap, variable BPM, video+videogap, instrumental.
-
-## 11.2 Golden Scoring Fixtures
-
- Beat-indexed test streams (toneValid/midiNote) with expected Notes/Golden/Line/Total outputs (exact).
-
-## 11.3 Live Network Tests
-
- Jitter/loss/disconnect injection tests + acceptance thresholds.
-
-## 11.4 Test Report Format
-
- Define required outputs: test_report.md + diffs + logs; PASS criteria gate.
-
 # Appendix A: Supported Tags Reference
 
  Complete table of tags, units, defaults, and gameplay impact.
@@ -1565,194 +1524,3 @@ Actions:
 
  JSON schemas for all messages.
 
-# Appendix C: Fixture Inventory
-
-Appendix C contains normative input fixtures and their expected, deterministic receiver-side reconstruction results.
-
-The fixtures in this appendix are NOT end-to-end scoring fixtures. They validate protocol parsing, ordering, timestamp handling, and the semantics of toneValid/midiNote.
-
-General rules (applies to all Appendix C fixtures):
-- The receiver MUST be able to parse all messages and ignore unknown fields.
-- The receiver MUST reconstruct an ordered frame stream using frame.seq and/or frame.ts (see Section 9), independent of message arrival time.
-- The receiver MUST NOT interpret any specific `midiNote` value (including 0) as silence. Silence/unvoiced is represented by `toneValid=false`.
-
-## C.1 gangnamstyle-normal-5s (protocol + ordered frames)
-
-Input file: appendixC_gangnamstyle_normal_5s_stream.json
-
-Expected result (receiver reconstruction):
-```json
-{
-  "batching": {
-    "batch_count": 50,
-    "batch_interval_ms": 100,
-    "frames_per_batch": 5
-  },
-  "covers_capture_time_ms": {
-    "duration": 4980,
-    "end": 4980,
-    "start": 0
-  },
-  "expected_receiver_reconstruction": {
-    "fps": 50.0,
-    "frame_count": 250,
-    "missing_midiNote": 0,
-    "seq": {
-      "max": 249,
-      "min": 0,
-      "must_be_contiguous": true
-    },
-    "midiNote_counts": {
-      "0": 25,
-      "1": 25,
-      "2": 25,
-      "3": 25,
-      "4": 25,
-      "5": 25,
-      "6": 25,
-      "7": 25,
-      "8": 25,
-      "9": 25
-    },
-    "toneValid_counts": {
-      "true": 250
-    },
-    "ts_ms": {
-      "max": 4980,
-      "min": 0,
-      "step": 20
-    }
-  },
-  "fixture_file": "appendixC_gangnamstyle_normal_5s_stream.json",
-  "notes": [
-    "No specific midiNote value implies silence. Silence/unvoiced MUST be represented by toneValid=false.",
-    "This fixture is synthetic and is used to validate protocol parsing, ordering, and basic pitch frame handling (not musical correctness)."
-  ]
-}
-```
-
-## C.2 gangnamstyle-rap-5s (unvoiced frames + large batches)
-
-Input file: appendixC_gangnamstyle_rap_5s_stream.json
-
-Expected result (receiver reconstruction):
-```json
-{
-  "batching": {
-    "batch_count": 10,
-    "batch_interval_ms": 500,
-    "frames_per_batch": 25
-  },
-  "covers_capture_time_ms": {
-    "duration": 4980,
-    "end": 4980,
-    "start": 0
-  },
-  "expected_receiver_reconstruction": {
-    "fps": 50.0,
-    "frame_count": 250,
-    "missing_midiNote": 65,
-    "seq": {
-      "max": 249,
-      "min": 0,
-      "must_be_contiguous": true
-    },
-    "midiNote_counts_for_toneValid_true": {
-      "0": 13,
-      "1": 18,
-      "2": 14,
-      "3": 17,
-      "4": 14,
-      "5": 16,
-      "6": 14,
-      "7": 17,
-      "8": 14,
-      "9": 17,
-      "10": 14,
-      "11": 17
-    },
-    "toneValid_counts": {
-      "false": 65,
-      "true": 185
-    },
-    "ts_ms": {
-      "max": 4980,
-      "min": 0,
-      "step": 20
-    }
-  },
-  "fixture_file": "appendixC_gangnamstyle_rap_5s_stream.json",
-  "notes": [
-    "For frames where toneValid=false, midiNote is omitted. The receiver MUST treat those frames as unvoiced/silence for scoring and UI.",
-    "This fixture validates handling of intermittent unvoiced frames and larger batch sizes."
-  ]
-}
-```
-
-## C.3 Future scoring fixtures (reserved)
-
-Scoring fixtures (song + pitch stream + expected total score breakdown) are out of scope for Appendix C in v0.3. When added, each scoring fixture MUST provide:
-- Covered song_time_ms window and all timing assumptions (BPM, GAP, micDelayMs, and any drift correction settings).
-- Expected per-checkpoint state (active note id, judgement bucket) and final score totals.
-- Enough detail to reproduce results deterministically without referencing USDX source code.
-
-# Appendix D. Fixture-driven UATs (planned, deterministic descriptions)
-
-This appendix lists mandatory MVP test cases that SHOULD be backed by fixtures. The fixtures themselves are NOT included here; this section defines deterministic inputs and expected outcomes so they can be generated later.
-
-Conventions:
-- A 'song fixture' is a self-contained directory containing a `.txt` chart and referenced media placeholders (audio file may be a silent stub).
-- A 'pitch fixture' is a JSON message log representing `pitchFrame`/`pitchBatch` traffic (Section 8.3) aligned to a song_time_ms window.
-- 'Expected outcome' MUST be assertable by an automated test without human interpretation.
-
-## D.1 Recursive song discovery
-Purpose: verify recursive `.txt` discovery across nested folders and stable sorting.
-Inputs: create a songs root with nested subfolders containing 3 `.txt` files at different depths. Each `.txt` has distinct #ARTIST/#ALBUM/#TITLE values.
-Expected outcome: library index contains exactly 3 entries; sort order is Artist, then Album, then Title (Section 3.4).
-
-## D.2 Reject missing required header tag
-Purpose: verify rejection and diagnostic collection.
-Inputs: `.txt` missing `#BPM:` (or empty `#TITLE:`). Provide line numbers deterministically by placing the missing/empty tag at a known line.
-Expected outcome: song is rejected (Section 3.2) with an error diagnostic that includes (a) 1-based line number and (b) reason code indicating which required field is missing.
-
-## D.3 Reject missing required audio file
-Purpose: verify required audio existence check.
-Inputs: `.txt` with required headers, but `#AUDIO:` (or `#MP3:` if `#AUDIO:` absent) points to a non-existent relative path under the `.txt` directory.
-Expected outcome: song is rejected with a diagnostic indicating missing audio file (Section 3.2).
-
-## D.4 Unknown header tag is logged but parsing continues
-Purpose: verify unknown tags are preserved and warned.
-Inputs: `.txt` includes `#FOO:bar` before notes; required tags present.
-Expected outcome: song is accepted; diagnostics include a warning for unknown tag; `CustomTags` contains `(FOO, bar)` in the original order (Section 4.3).
-
-## D.5 Recoverable body grammar issue is logged but parsing continues
-Purpose: verify auto-fix and non-fatal handling.
-Inputs: `.txt` body contains an empty line, whitespace-only line, and a line with an unknown leading token `X ...`.
-Expected outcome: song is accepted; diagnostics include warnings for the unknown/invalid line(s); notes parsing continues; line count and note count match the parsable lines (Section 4.3).
-
-## D.6 Version-specific tag handling
-Purpose: verify `#NOTESGAP`/`#RESOLUTION` ignored for version >=1.0.0 and that `#RELATIVE` is rejected for version >=1.0.0.
-Inputs: two `.txt` files identical except #VERSION and presence of legacy tags.
-Expected outcome:
-- For #VERSION >= 1.0.0: `#NOTESGAP` and `#RESOLUTION` are ignored with info diagnostics; `#RELATIVE` causes rejection (Section 4.2).
-- For #VERSION absent or <1.0.0: legacy tags are honored (where specified) and song can be accepted.
-
-## D.7 Protocol frame ordering and batching
-Purpose: verify seq monotonicity and batch parsing.
-Inputs: a pitch fixture containing (a) a `pitchBatch` with 5 frames, then (b) a single `pitchFrame` with a lower `seq`.
-Expected outcome: batched frames are accepted in order; the regressing `seq` frame is dropped and produces a warning diagnostic (Section 8.3).
-
-## D.8 midiNote octave normalization scoring
-Purpose: verify octave wrapping logic.
-Inputs: song fixture with one Normal note at target tone T for a short duration. Pitch fixture where phone sends `midiNote` whose derived `toneUsdx = midiNote - 36` is an octave away (T +/- 12) while `toneValid=true`.
-Expected outcome: detection beats during the note score as hits as if the singer were in the closest octave (Section 6.4).
-
-## D.9 Rap presence-only scoring gate
-Purpose: verify rap notes ignore pitch difference but require voicing.
-Inputs: song fixture containing a Rap note spanning multiple detection beats. Pitch fixture with alternating `toneValid=false` and `toneValid=true` frames.
-Expected outcome: only detection beats whose selected frame has `toneValid=true` count as hits; pitch value does not affect hit/miss (Section 6.2).
-
-## D.10 Auto mic delay adjustment
-Purpose: verify TV-side drift/latency compensation algorithm.
-Inputs: a pitch fixture with consistent positive lateness bias (arrivalTimeTv later than mapped capture time) for >10s, stable median >80ms.
-Expected outcome: TV increases `effectiveMicDelayMs` in +10ms steps no more than once per 10s window until median bias is within +/-80ms, respecting [0,400] clamp and reset conditions (Section 9.2).
