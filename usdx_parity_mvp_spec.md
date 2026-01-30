@@ -15,6 +15,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-30 04:46 CET | TBD | Align beat model with USDX: do not scale note/sentence/B-line beats; only scale BPM by 4. |
 | 2026-01-30 04:45 CET | TBD | Add rolling change record; future edits must append here and prune entries older than 4 hours. |
 
 
@@ -471,13 +472,13 @@ Notes:
 
 ### Internal beat unit
 
-This specification uses an internal beat grid that is 4x finer than the beat numbers written in UltraStar `.txt` files.
+USDX treats the beat numbers written in UltraStar `.txt` files as the authoritative beat grid (quarter-beat resolution). There is no additional beat scaling.
 
 - File beats: the integers stored in note lines (`startBeat`, `duration`) and sentence lines (`- startBeat`) in the `.txt`.
-- Internal beats: `internalBeat = fileBeat * 4`.
+- Internal beats: identical to file beats (no scaling): `internalBeat = fileBeat`.
 
 Parsing rule:
-- Every parsed file beat value (note `startBeat`, note `duration`, sentence `startBeat`, and BPM-change `startBeat`) MUST be multiplied by 4 before any further processing.
+- Parsed beat values (note `startBeat`, note `duration`, sentence `startBeat`, and BPM-change `startBeat`) MUST be used as-is (no `*4`).
 
 ### Internal BPM
 
@@ -488,7 +489,7 @@ Parsing rule:
 For BPM changes inside the song body (`B <startBeat> <bpm>`):
 - Parse `startBeat_file` and `bpm_file`.
 - Convert:
-  - `startBeat_internal = startBeat_file * 4`
+  - `startBeat_internal = startBeat_file` (no scaling)
   - `bpm_internal = bpm_file * 4`
 
 ### TimeSecToMidBeatInternal
