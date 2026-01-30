@@ -15,6 +15,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-30 04:47 CET | TBD | Align variable-BPM time->beat conversion with USDX: clamp tSec<=0 to beat 0. |
 | 2026-01-30 04:46 CET | TBD | Align beat model with USDX: do not scale note/sentence/B-line beats; only scale BPM by 4. |
 | 2026-01-30 04:45 CET | TBD | Add rolling change record; future edits must append here and prune entries older than 4 hours. |
 
@@ -512,7 +513,7 @@ Variable BPM (one or more `B` lines):
   - `secPerBeat = 60.0 / bpm_i`
   - `segTime = segBeats * secPerBeat`
 - Conversion algorithm:
-  - If `tSec <= 0`, compute using the first segment only: `MidBeat_internal = tSec * (bpm_0 / 60.0)`.
+  - If `tSec <= 0`, return `MidBeat_internal = 0` (clamp; USDX behavior for variable BPM).
   - Else, walk segments from i=0 upward:
     - If `tSec >= segTime`, then `tSec -= segTime` and add `segBeats` to the beat accumulator.
     - Else, add `tSec * (bpm_i / 60.0)` to the beat accumulator and stop.
