@@ -15,6 +15,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-30 05:22 CET | TBD | Align `#GAP` with USDX parsing: treat GAP as float milliseconds (fractional ms allowed) and define `GAPms` accordingly. |
 | 2026-01-30 04:56 CET | TBD | Specify an NTP-lite clock sync (4 timestamps + best-of-N) for mapping phone tCaptureMs to TV time. |
 | 2026-01-30 04:55 CET | TBD | Define maxAmp normalization for phone voicing thresholding (0..1) to remove ambiguity. |
 | 2026-01-30 04:53 CET | TBD | Align audio tag requirements with USDX: require AUDIO or MP3 (not version-gated); resolve relative paths against the .txt directory (subpaths allowed). |
@@ -346,7 +347,7 @@ For note tokens (`:`, `*`, `F`, `R`, `G`) USDX parses:
  - The resolved audio file MUST exist, otherwise load fails.
 
 ### Timing/alignment tags
-- `#GAP:` millisecond offset used as the lyrics/audio time origin for beat/time conversions (see Section 5.1).
+- `#GAP:` millisecond offset used as the lyrics/audio time origin for beat/time conversions (see Section 5.1). Parsed as a float (fractional ms allowed).
 - `#START:` seconds; initial playback/lyrics time offset.
 - `#END:` milliseconds; sets lyrics total time if present.
 - `#PREVIEWSTART:` seconds; used by editor and can be used for song preview.
@@ -454,7 +455,7 @@ Token-specific behavior:
 The chart is authored in beats, while DSP frames and playback run in time. The TV MUST convert between time and beats deterministically using the rules below.
 
 Definitions:
-- `GAPms`: the integer value of `#GAP:` in milliseconds.
+- `GAPms`: the float value of `#GAP:` in milliseconds (fractional ms allowed).
 - `lyricsTimeSec`: the current lyrics/playback clock time in seconds, where `lyricsTimeSec = 0` corresponds to the start of the audio file.
 - `micDelayMs`: the per-phone (or per-player) microphone delay setting in milliseconds.
 
