@@ -1,7 +1,7 @@
 Android Karaoke Game
 USDX Parity MVP Functional Specification
 
-Version: 1.5
+Version: 1.6
 
 Date: 2026-01-30
 
@@ -15,11 +15,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
-| 2026-01-30 14:46 CET | TBD | Remove all prior acceptance test artifact references (Section 11 + Appendices C/D) to allow new acceptance criteria content. |
-| 2026-01-30 16:30 CET | TBD | Specify "skip intro" next-line start time derivation (USDX-parity: upper line, first note start beat; duet uses min). |
-| 2026-01-30 16:33 CET | TBD | Specify scoring beat stepping: evaluate all integer beats in (oldBeatD, currentBeatD] (USDX parity). |
-| 2026-01-30 16:34 CET | TBD | Define normative minimum library index record fields for Song Select/Search without re-parsing. |
-| 2026-01-30 16:36 CET | TBD | Define structured diagnostics schema and minimum invalidation codes for invalid song export/troubleshooting. |
+| 2026-01-30 21:12 CET | Assistant | Add a normative parsed-song in-memory model (Appendix C) plus a JSON fixture serialization (Appendix D) to enable portable acceptance/unit fixtures. |
 
 
 
@@ -87,6 +83,8 @@ Conventions:
   - 10.6 Results
 - Appendix A: Supported Tags Reference
 - Appendix B: Protocol Schemas
+- Appendix C: Parsed Song Model (Normative)
+- Appendix D: ParsedSongModel Fixture Serialization (Normative)
 
 # 1. Product Contract
 
@@ -1577,5 +1575,199 @@ Actions:
 
 # Appendix B: Protocol Schemas
 
- JSON schemas for all messages.
+TODO: JSON schemas for all protocol messages.
+
+# Appendix C: Parsed Song Model (Normative)
+
+This appendix defines the **normative in-memory representation** of a parsed USDX `.txt` song.
+
+- Implementations MAY choose different class/type names.
+- Implementations MUST preserve the fields, semantics, and invariants described here.
+- All beats in this model are expressed in **file beats** (the beats used in `.txt` note lines). Conversion to internal beats is defined in Section 5.2.
+
+## C.1 Core entities
+
+### ParsedSong
+
+Required fields:
+
+- `songId` (string): stable identifier of the song instance in the library (e.g., derived from song folder URI + relative path).
+- `header` (SongHeader)
+- `timing` (SongTiming)
+- `tracks` (Track[1..2])
+- `diagnostics` (DiagnosticEntry[]) : parse-time diagnostics; MUST include line numbers when available.
+
+Invariants:
+
+- `tracks.length` MUST be `2` if and only if duet mode is detected (Section 4.1: first non-empty body token begins with `P`). Otherwise `tracks.length` MUST be `1`.
+- All note events in `tracks[*].lines[*].notes[*]` MUST satisfy `durationBeats >= 1` (duration 0 MUST already be converted to Freestyle per Section 4.3).
+
+### SongHeader
+
+Required fields (mirrors Section 4.2 semantics):
+
+- `title` (string)
+- `artist` (string)
+- `bpmFile` (float) : file BPM from `#BPM` (before internal conversion)
+- `gapMs` (int) : from `#GAP`
+- `audio` (string) : from `#AUDIO`
+
+Optional fields:
+
+- `video` (string|null)
+- `cover` (string|null)
+- `background` (string|null)
+- `p1Name` (string|null) : from `#P1` (duet)
+- `p2Name` (string|null) : from `#P2` (duet)
+- `relativeMode` (bool) : legacy `<1.0.0` RELATIVE mode (Section 4.3)
+- `version` (string) : from `#VERSION` if present; otherwise treated as `0.3.0` for legacy behavior (Section 4.3)
+- `customTags` (map<string,string>) : unknown/malformed tags preserved per Section 4.3
+
+### SongTiming
+
+Required fields:
+
+- `bpmChanges` (BpmChange[]) : ordered by increasing `startBeatFile`
+
+Optional/derived fields:
+
+- `startBeatFile` (int|null) : from `#START` if present
+- `endBeatFile` (int|null) : from `#END` if present
+- `notesGapBeatsFile` (int|null) : from `#NOTESGAP` if present
+
+`BpmChange`:
+
+- `startBeatFile` (int) : beat at which this BPM becomes active (file beats)
+- `bpmFile` (float) : BPM value that applies from `startBeatFile` until the next change
+
+Invariants:
+
+- If there are no in-song `B` tokens, `bpmChanges` MUST contain exactly one entry with `startBeatFile=0` and `bpmFile=header.bpmFile`.
+
+### Track
+
+Required fields:
+
+- `trackIndex` (int) : `0` for P1 (or solo), `1` for P2
+- `lines` (Line[]) : ordered in encounter order
+
+### Line
+
+A "line" corresponds to a sentence/phrase separated by `-` tokens in the body.
+
+Required fields:
+
+- `lineIndex` (int) : 0-based within track
+- `notes` (NoteEvent[]) : ordered by `startBeatFile` then encounter order
+
+Optional/derived fields:
+
+- `startBeatFile` (int) : the `startBeatFile` of the first note in the line (if any)
+- `endBeatFileExclusive` (int) : `max(note.startBeatFile + note.durationBeats)` over notes in the line
+
+Invariants:
+
+- Lines MAY be empty (e.g., consecutive `-`), but empty lines MUST NOT affect scoring.
+
+### NoteEvent
+
+Required fields:
+
+- `noteType` (enum) : one of:
+  - `Normal`  (token `:`)
+  - `Golden`  (token `*`)
+  - `Rap`     (token `R`)
+  - `RapGolden` (token `G`)
+  - `Freestyle` (token `F`)
+- `startBeatFile` (int)
+- `durationBeats` (int)
+- `toneUsdx` (int) : semitone index in USDX scale (`C2 = 0`) (Section 6).
+- `lyric` (string) : as authored (may be empty)
+
+Optional/derived fields:
+
+- `endBeatFileExclusive` (int) : `startBeatFile + durationBeats`
+
+
+# Appendix D: ParsedSongModel Fixture Serialization (Normative)
+
+This appendix defines a **portable JSON** serialization for fixtures that validate:
+
+- TXT parsing output (Appendix C)
+- Timing/beat conversion and scoring (Sections 5–6)
+
+The goal is that the same fixtures can be consumed by:
+
+- end-to-end acceptance tests
+- unit tests (parser, timing, scoring, clock sync)
+
+## D.1 Fixture folder layout
+
+Each fixture is a directory containing at minimum:
+
+- `song.txt` : the USDX `.txt` under test
+- `expected.parsedSong.json` : the expected `ParsedSong` (Appendix C) serialized as JSON
+
+Optional files depending on fixture type:
+
+- `pitchFrames.jsonl` : one JSON object per line (same fields as protocol `pitchFrame`, Section 8.3)
+- `expected.score.json` : expected scoring totals and/or per-beat outcomes
+
+## D.2 JSON schema (structural)
+
+The following describes the **required shape** (not a specific JSON-Schema draft).
+
+Top level: `ParsedSong`
+
+- `songId`: string
+- `header`: object
+  - `title`: string
+  - `artist`: string
+  - `bpmFile`: number
+  - `gapMs`: integer
+  - `audio`: string
+  - `video`: string|null (optional)
+  - `cover`: string|null (optional)
+  - `background`: string|null (optional)
+  - `p1Name`: string|null (optional)
+  - `p2Name`: string|null (optional)
+  - `relativeMode`: boolean (optional)
+  - `version`: string (optional)
+  - `customTags`: object<string,string> (optional)
+- `timing`: object
+  - `bpmChanges`: array of objects `{ startBeatFile:int, bpmFile:number }`
+  - `startBeatFile`: int|null (optional)
+  - `endBeatFile`: int|null (optional)
+  - `notesGapBeatsFile`: int|null (optional)
+- `tracks`: array (length 1 or 2)
+  - track object:
+    - `trackIndex`: int
+    - `lines`: array
+      - line object:
+        - `lineIndex`: int
+        - `notes`: array
+          - note object:
+            - `noteType`: string (one of `Normal|Golden|Rap|RapGolden|Freestyle`)
+            - `startBeatFile`: int
+            - `durationBeats`: int
+            - `toneUsdx`: int
+            - `lyric`: string
+- `diagnostics`: array (may be empty)
+  - diagnostic entry object:
+    - `severity`: string
+    - `code`: string
+    - `message`: string
+    - `lineNumber`: int|null
+
+## D.3 Pitch frame fixture format (`pitchFrames.jsonl`)
+
+Each line is a JSON object with the same required fields as Section 8.3 `pitchFrame`:
+
+- `seq` (uint32)
+- `tCaptureMs` (int)
+- `toneValid` (bool)
+- `midiNote` (int|null)
+
+Implementations MUST treat missing frames for a scoring beat as `toneValid=false` for that beat (Section 9.1).
+
 
