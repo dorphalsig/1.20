@@ -15,6 +15,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-30 04:53 CET | TBD | Align audio tag requirements with USDX: require AUDIO or MP3 (not version-gated); resolve relative paths against the .txt directory (subpaths allowed). |
 | 2026-01-30 04:49 CET | TBD | Align pitch protocol with USDX: phone sends MIDI note numbers; TV derives USDX tone scale (C2=0) and applies USDX octave normalization. |
 | 2026-01-30 04:47 CET | TBD | Align variable-BPM time->beat conversion with USDX: clamp tSec<=0 to beat 0. |
 | 2026-01-30 04:46 CET | TBD | Align beat model with USDX: do not scale note/sentence/B-line beats; only scale BPM by 4. |
@@ -160,12 +161,11 @@ A song entry is accepted into the library if and only if all of the following ch
 - `#TITLE` and `#ARTIST` MUST be present and non-empty.
 - `#BPM` MUST be present and parseable as a positive floating-point number.
 - A required audio reference tag MUST be present:
-  - If `#VERSION` is absent or < 1.0.0, `#MP3` MUST be present and non-empty.
-  - If `#VERSION` is >= 1.0.0, `#AUDIO` MUST be present and non-empty.
-  (Audio tag precedence and resolution is defined in Section 4.2.)
+  - At least one of `#AUDIO` or `#MP3` MUST be present and non-empty.
+  - If both are present, `#AUDIO` takes precedence (Section 4.2).
 
 2) Required audio file exists
-- The audio filename resolved by the rules in Section 4.2 MUST exist in the same directory as the `.txt` (unless the resolved value is an absolute URI supported by the platform; if absolute URIs are not supported in MVP, treat them as missing).
+- The audio reference resolved by Section 4.2 MUST resolve to an existing file when interpreted relative to the `.txt` directory (subpaths are allowed), unless the resolved value is an absolute URI supported by the platform (if absolute URIs are not supported in MVP, treat them as missing).
 
 3) Notes section parses without fatal errors
 - The notes/body section MUST be parsed according to Section 4.1 and Section 4.3.
@@ -339,9 +339,9 @@ For note tokens (`:`, `*`, `F`, `R`, `G`) USDX parses:
 - `#ARTIST:` song artist.
 - `#BPM:` base BPM. USDX loads as `BPM_internal = BPM_file * 4`.
 - Audio filename:
- - Format 1.0.0: `#AUDIO:` preferred; if present it overrides `#MP3:`.
- - Older formats: `#MP3:` is used.
- - Audio file must exist, otherwise load fails.
+ - At least one of `#AUDIO:` or `#MP3:` MUST be present and non-empty.
+ - If `#AUDIO:` is present, it takes precedence over `#MP3:` (regardless of `#VERSION`).
+ - The resolved audio file MUST exist, otherwise load fails.
 
 ### Timing/alignment tags
 - `#GAP:` millisecond offset used as the lyrics/audio time origin for beat/time conversions (see Section 5.1).
@@ -1643,7 +1643,7 @@ Expected outcome: song is rejected (Section 3.2) with an error diagnostic that i
 
 ## D.3 Reject missing required audio file
 Purpose: verify required audio existence check.
-Inputs: `.txt` with required headers, but `#AUDIO:` points to a non-existent filename in the same directory.
+Inputs: `.txt` with required headers, but `#AUDIO:` (or `#MP3:` if `#AUDIO:` absent) points to a non-existent relative path under the `.txt` directory.
 Expected outcome: song is rejected with a diagnostic indicating missing audio file (Section 3.2).
 
 ## D.4 Unknown header tag is logged but parsing continues
