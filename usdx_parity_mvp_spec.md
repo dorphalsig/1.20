@@ -11,13 +11,11 @@ Status: Draft
 
 
 
-# Revision History
+# Change Record (rolling, last 4 hours, Europe/Berlin)
 
-| Version | Date | Author | Changes |
-| --- | --- | --- | --- |
-| 0.3 | 2026-01-25 | Spec Bot | Make scoring and timing self-contained (ScoreFactor, Difficulty->Range, rounding); define toneAbs domain and toneValid thresholding; add explicit Table of Contents; move Song List+Search UI into Library section. |
-| 0.2 | 2026-01-25 | TBD | Add Appendix C expected results for pitch stream fixtures; add explicit fixture time windows; clarify toneAbs=0 is a valid pitch when toneValid=true. |
-| 0.1 | 2026-01-25 | TBD | Initial draft skeleton. |
+| Timestamp | Author | Changes |
+| --- | --- | --- |
+| 2026-01-30 04:45 CET | TBD | Add rolling change record; future edits must append here and prune entries older than 4 hours. |
 
 
 
