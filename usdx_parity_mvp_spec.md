@@ -1,7 +1,7 @@
 Android Karaoke Game
 USDX Parity MVP Functional Specification
 
-Version: 1.1
+Version: 1.2
 
 Date: 2026-01-30
 
@@ -16,6 +16,7 @@ Status: Draft
 | Timestamp | Author | Changes |
 | --- | --- | --- |
 | 2026-01-30 14:46 CET | TBD | Remove all prior acceptance test artifact references (Section 11 + Appendices C/D) to allow new acceptance criteria content. |
+| 2026-01-30 16:30 CET | TBD | Specify "skip intro" next-line start time derivation (USDX-parity: upper line, first note start beat; duet uses min). |
 
 
 
@@ -567,7 +568,10 @@ NOTESGAP and RESOLUTION (normative)
 Gameplay behaviors that depend on START/END (normative)
 - Restart song: resets per-player scores/state and seeks playback back to `startSec` (and video to `videoGapSec + startSec`).
 - Skip intro action: when triggered during singing, if the next upcoming line start time is more than 6.0 seconds ahead of current `songTimeSec`, seek to 5.0 seconds before that next line start time.
-  - For duet songs, compute the next-line start time as the earlier of the two tracks.
+  - Definition (parity-critical): the "next upcoming line start time" MUST be computed from the lyrics renderer's *next-to-sing* ("upper") line, using the start beat of the *first note* in that line.
+    - Solo: `nextLineStartBeat = UpperLine.StartNote`.
+    - Duet: `nextLineStartBeat = min(UpperLineP1.StartNote, UpperLineP2.StartNote)`.
+    - Convert to seconds as: `nextLineStartTimeSec = BeatInternalToTimeSec(nextLineStartBeat) + (GAPms/1000.0)`.
   - The seek target MUST be clamped to at least `startSec`.
 
 
