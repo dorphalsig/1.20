@@ -1,7 +1,7 @@
 Android Karaoke Game
 USDX Parity MVP Functional Specification
 
-Version: 1.3
+Version: 1.4
 
 Date: 2026-01-30
 
@@ -18,6 +18,7 @@ Status: Draft
 | 2026-01-30 14:46 CET | TBD | Remove all prior acceptance test artifact references (Section 11 + Appendices C/D) to allow new acceptance criteria content. |
 | 2026-01-30 16:30 CET | TBD | Specify "skip intro" next-line start time derivation (USDX-parity: upper line, first note start beat; duet uses min). |
 | 2026-01-30 16:33 CET | TBD | Specify scoring beat stepping: evaluate all integer beats in (oldBeatD, currentBeatD] (USDX parity). |
+| 2026-01-30 16:34 CET | TBD | Define normative minimum library index record fields for Song Select/Search without re-parsing. |
 
 
 
@@ -183,7 +184,31 @@ Audio/video/instrumental files are validated for existence at load time:
 
 ## 3.3 Index Fields (Functional)
 
- Define which fields must be stored to render Song Select without full re-parse (e.g., title/artist, flags, URIs, modified times, validation status, duet labels).
+The library index MUST store enough information to render Song Select and Search without re-parsing every TXT file on every app start.
+
+Normative minimum index record (per song)
+- Identity / storage
+  - `songId`: stable identifier derived from the TXT document URI (e.g., normalized URI string hash). Must be stable across app restarts.
+  - `txtUri`: persisted SAF URI for the TXT file (or absolute path in non-SAF environments).
+  - `songsFolderUri`: the root library folder URI that produced this entry (to support multiple roots).
+  - `modifiedTimeMs`: last-modified timestamp of the TXT file at indexing time.
+- Validation
+  - `isValid`: boolean.
+  - `invalidReasonCode`: required if `isValid=false` (short stable string; see Section 4.3).
+  - `invalidLineNumber`: required if `isValid=false` and the failure is associated with a specific TXT line (1-based).
+- Display fields
+  - `artist`, `title` (required by validation rules).
+  - `album` (optional).
+- Flags (derived from parse)
+  - `isDuet` (true if song is duet).
+  - `hasRap` (true if any `R` or `G` notes exist).
+  - `hasVideo` (true if a video reference exists and the file is present).
+  - `hasInstrumental` (true if `#INSTRUMENTAL` exists and the file is present).
+- Preview/seek metadata
+  - `startSec` (from `#START`, default 0.0).
+  - `previewStartSec` (computed as: PREVIEWSTART else START else 0.0; see Section 3.4 and Section 10.2).
+
+Implementations MAY store additional fields (e.g., genre, year, cover/background URIs, videoGapSec) but the above is the minimum required for MVP behavior.
 
 
 ## 3.4 Song List (Landing Screen)
