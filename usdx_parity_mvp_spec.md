@@ -1,7 +1,7 @@
 Android Karaoke Game
 USDX Parity MVP Functional Specification
 
-Version: 1.8
+Version: 1.9
 
 Date: 2026-01-30
 
@@ -15,6 +15,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-30 23:38 CET | Assistant | Align audio header acceptance with USDX: AUDIO introduced in >=1.0.0 and MP3 required for legacy; MP3 remains fallback when AUDIO absent. |
 | 2026-01-30 22:26 CET | Assistant | Replace Appendix A/B placeholders with USDX-aligned tag/token reference + protocol JSON schemas; reconcile ping/pong field names. |
 | 2026-01-30 22:09 CET | Assistant | Add Appendix E worked numeric examples (timing + scoring) to make acceptance fixtures deterministic without audio/DSP. |
 | 2026-01-30 21:12 CET | Assistant | Add a normative parsed-song in-memory model (Appendix C) plus a JSON fixture serialization (Appendix D) to enable portable acceptance/unit fixtures. |
@@ -148,10 +149,10 @@ A song entry is accepted into the library if and only if all of the following ch
 
 1) Required header tags present
 - `#TITLE` and `#ARTIST` MUST be present and non-empty.
-- `#BPM` MUST be present and parseable as a positive floating-point number.
+- `#BPM` MUST be present and parseable as a **non-zero** floating-point number (USDX accepts any non-zero value).
 - A required audio reference tag MUST be present:
-  - At least one of `#AUDIO` or `#MP3` MUST be present and non-empty.
-  - If both are present, `#AUDIO` takes precedence (Section 4.2).
+  - For `#VERSION >= 1.0.0`: at least one of `#AUDIO` or `#MP3` MUST be present and non-empty. If both are present, `#AUDIO` takes precedence (Section 4.2).
+  - For legacy format (`#VERSION` absent or `< 1.0.0`): `#MP3` MUST be present and non-empty. `#AUDIO` (if present) MUST be ignored for audio resolution (USDX behavior).
 
 2) Required audio file exists
 - The audio reference resolved by Section 4.2 MUST resolve to an existing file when interpreted relative to the `.txt` directory (subpaths are allowed), unless the resolved value is an absolute URI supported by the platform (if absolute URIs are not supported in MVP, treat them as missing).
@@ -164,8 +165,8 @@ A song entry is accepted into the library if and only if all of the following ch
 4) Each track has at least one non-empty sentence after cleanup
 After body parsing completes, validation MUST ensure each parsed track (single track, or both tracks for duet) contains singable structure:
 
-- The track MUST contain at least one sentence delimiter (`-`), resulting in at least one sentence/line object.
-  - If a track contains zero sentence delimiters, reject with reason `ERROR_CORRUPT_SONG_NO_BREAKS`.
+- The track MAY omit sentence delimiters (`-`). If the body contains note events but no `-`, the parser MUST still construct at least one sentence/line container (USDX behavior).
+  - `ERROR_CORRUPT_SONG_NO_BREAKS` is **reserved** for the invariant failure where the implementation cannot construct any sentence/line container after parsing.
 
 - Empty sentences MUST be removed. An "empty sentence" is a sentence/line with zero note events after parsing (i.e., no `:`, `*`, `F`, `R`, `G` notes).
   - This cleanup is performed before the "no notes" check.
@@ -352,8 +353,8 @@ For note tokens (`:`, `*`, `F`, `R`, `G`) USDX parses:
 - `#ARTIST:` song artist.
 - `#BPM:` base BPM. USDX loads as `BPM_internal = BPM_file * 4`.
 - Audio filename:
- - At least one of `#AUDIO:` or `#MP3:` MUST be present and non-empty.
- - If `#AUDIO:` is present, it takes precedence over `#MP3:` (regardless of `#VERSION`).
+ - For `#VERSION >= 1.0.0`: at least one of `#AUDIO:` or `#MP3:` MUST be present and non-empty. If `#AUDIO:` is present, it takes precedence over `#MP3:` (USDX behavior).
+ - For legacy format (`#VERSION` absent or `< 1.0.0`): `#MP3:` MUST be present and non-empty. `#AUDIO:` (if present) MUST be ignored for audio resolution (USDX behavior).
  - The resolved audio file MUST exist, otherwise load fails.
 
 ### Timing/alignment tags
@@ -474,7 +475,7 @@ Diagnostics record schema (normative)
 Minimum invalidation codes (parity-aligned)
 - `ERROR_CORRUPT_SONG_FILE_NOT_FOUND`: required audio file missing/unresolvable.
 - `ERROR_CORRUPT_SONG_NO_NOTES`: after sentence cleanup, no remaining sentences.
-- `ERROR_CORRUPT_SONG_NO_BREAKS`: track contains zero sentence breaks (`-`).
+- `ERROR_CORRUPT_SONG_NO_BREAKS`: reserved — implementation could not construct any sentence/line container after parsing (USDX typically does not reject songs solely for missing `-`).
 - `ERROR_CORRUPT_SONG_MISSING_REQUIRED_HEADER`: missing TITLE/ARTIST/AUDIO-or-MP3/BPM.
 - `ERROR_CORRUPT_SONG_MALFORMED_HEADER`: required header present but malformed/unparseable.
 - `ERROR_CORRUPT_SONG_MALFORMED_BODY`: recognized body token but numeric field parse fails.
@@ -1595,7 +1596,7 @@ Legend:
 | `#TITLE` | yes | string | - | all | - | display only | Required; missing/empty invalidates song. |
 | `#ARTIST` | yes | string | - | all | - | display only | Required; missing/empty invalidates song. |
 | `#AUDIO` | yes (preferred) | string | relative path | `>= 1.0.0` | - | timing (playback clock) | If present, takes precedence over `#MP3`. Referenced file MUST exist or song invalid (Section 3.2/4.3). |
-| `#MP3` | yes (fallback) | string | relative path | all | - | timing (playback clock) | Used as audio path if `#AUDIO` absent. Referenced file MUST exist or song invalid. |
+| `#MP3` | yes (fallback) | string | relative path | all | - | timing (playback clock) | Used as audio path for legacy format (`#VERSION` absent or `< 1.0.0`) and as fallback when `#AUDIO` is absent in `#VERSION >= 1.0.0`. Referenced file MUST exist or song invalid. |
 | `#BPM` | yes | float | file BPM | all | - | timing/scoring | Required and MUST be non-zero. Internal BPM = `BPM_file * 4` (Section 5.2). |
 | `#GAP` | no | float | ms | all | `0` | timing/scoring | Shifts highlight/scoring cursors (Section 5.1). |
 | `#START` | no | float | sec | all | `0` | timing (trim) | Audio start trim (Section 5.3). |
@@ -1947,7 +1948,7 @@ Required fields (mirrors Section 4.2 semantics):
 - `artist` (string)
 - `bpmFile` (float) : file BPM from `#BPM` (before internal conversion)
 - `gapMs` (int) : from `#GAP`
-- `audio` (string) : from `#AUDIO`
+- `audio` (string) : resolved audio filename (from `#AUDIO` when `#VERSION >= 1.0.0` and present; otherwise from `#MP3`, USDX behavior)
 
 Optional fields:
 
