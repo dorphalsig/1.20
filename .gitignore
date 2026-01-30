@@ -2,4 +2,5 @@
 *
 !usdx_parity_mvp_spec.md
 !.gitignore
+!fixtures/
 !fixtures/**
