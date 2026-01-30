@@ -1,7 +1,7 @@
 Android Karaoke Game
 USDX Parity MVP Functional Specification
 
-Version: 1.7
+Version: 1.8
 
 Date: 2026-01-30
 
@@ -15,6 +15,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-30 22:26 CET | Assistant | Replace Appendix A/B placeholders with USDX-aligned tag/token reference + protocol JSON schemas; reconcile ping/pong field names. |
 | 2026-01-30 22:09 CET | Assistant | Add Appendix E worked numeric examples (timing + scoring) to make acceptance fixtures deterministic without audio/DSP. |
 | 2026-01-30 21:12 CET | Assistant | Add a normative parsed-song in-memory model (Appendix C) plus a JSON fixture serialization (Appendix D) to enable portable acceptance/unit fixtures. |
 
@@ -934,7 +935,7 @@ Required control messages:
 - Fields: `sessionId`, `slots` (`{"P1":{connected,deviceName}, "P2":{...}}`), `inSong` (bool), `songTimeSec` (float, optional)
 
 4) `ping` / `pong` (both directions) 
-- `ping` fields: `nonce`, `tSendTvMs` (TV time) or `tSendPhoneMs` (phone time) depending on sender 
+- `ping` fields: `nonce`, `tTvSendMs` (TV time) or `tPhoneSendMs` (phone time) depending on sender 
 - `pong` echoes nonce plus sender timestamps to compute RTT and offset.
 
 5) `error` (TV -> phone) 
@@ -1573,12 +1574,346 @@ Actions:
 
 # Appendix A: Supported Tags Reference
 
- Complete table of tags, units, defaults, and gameplay impact.
+This appendix is **normative** and is intended to be a single reference table for:
+- supported `.txt` header tags and their semantics
+- supported body tokens/line types and their grammar
+- defaults and version/deprecation behavior
+
+Unless explicitly stated otherwise, the tag semantics below follow **USDX** (`TSong.ReadTXTHeader` / `TSong.LoadSong`).
+
+## A.1 Header tags (USDX-aligned)
+
+Legend:
+- Req: required for song validity
+- Since/Until: format version applicability. USDX defaults missing `#VERSION` to legacy `0.3.0`.
+- Gameplay impact: whether it changes timing/scoring (vs metadata only)
+
+| Tag | Req | Type | Units | Since/Until | Default | Gameplay impact | Normative behavior |
+|---|---:|---|---|---|---|---|---|
+| `#VERSION` | no | string | - | all | (absent → `0.3.0`) | none | If present, MUST parse as dotted numeric version (e.g., `1.0.0`) or song is invalid. Supported versions are `< 2.0.0`; if `>= 2.0.0` song is invalid (Section 4.3). |
+| `#ENCODING` | legacy-only | string | - | `< 1.0.0` only | impl default | none | For `>= 1.0.0`, MUST be ignored and UTF-8 assumed (USDX behavior). |
+| `#TITLE` | yes | string | - | all | - | display only | Required; missing/empty invalidates song. |
+| `#ARTIST` | yes | string | - | all | - | display only | Required; missing/empty invalidates song. |
+| `#AUDIO` | yes (preferred) | string | relative path | `>= 1.0.0` | - | timing (playback clock) | If present, takes precedence over `#MP3`. Referenced file MUST exist or song invalid (Section 3.2/4.3). |
+| `#MP3` | yes (fallback) | string | relative path | all | - | timing (playback clock) | Used as audio path if `#AUDIO` absent. Referenced file MUST exist or song invalid. |
+| `#BPM` | yes | float | file BPM | all | - | timing/scoring | Required and MUST be non-zero. Internal BPM = `BPM_file * 4` (Section 5.2). |
+| `#GAP` | no | float | ms | all | `0` | timing/scoring | Shifts highlight/scoring cursors (Section 5.1). |
+| `#START` | no | float | sec | all | `0` | timing (trim) | Audio start trim (Section 5.3). |
+| `#END` | no | float | sec | all | `0` | timing (trim) | Audio end trim (Section 5.3). |
+| `#VIDEOGAP` | no | float | ms | all | `0` | A/V sync only | Video offset relative to audio (rendering). |
+| `#VIDEO` | no | string | relative path | all | unset | none | Optional; missing file is non-fatal in USDX; implementations MAY warn. |
+| `#COVER` | no | string | relative path | all | unset | none | Optional cover image. |
+| `#BACKGROUND` | no | string | relative path | all | unset | none | Optional background image. |
+| `#INSTRUMENTAL` | no | string | relative path | all | unset | none | Optional instrumental track. |
+| `#YEAR` | no | int | year | all | `0` | none | Optional metadata year. |
+| `#GENRE` | no | string (multi) | - | all | empty | none | Optional multi-valued metadata used for filtering/sorting in USDX. |
+| `#EDITION` | no | string (multi) | - | all | empty | none | Optional multi-valued metadata used for filtering/sorting in USDX. |
+| `#CREATOR` | no | string (multi) | - | all | empty | none | Optional multi-valued metadata used for filtering/sorting in USDX. |
+| `#LANGUAGE` | no | string (multi) | - | all | empty | none | Optional multi-valued metadata used for filtering/sorting in USDX. |
+| `#TAGS` | no | string (multi) | - | `>= 1.0.0` | empty | none | Optional multi-valued metadata; USDX parses only for `>= 1.0.0`. |
+| `#RESOLUTION` | legacy-only | int | ticks/beat | `<= 1.0.0` only | USDX default | timing (legacy) | Deprecated for `>= 1.0.0` (ignored). Invalid values reset to USDX default. |
+| `#NOTESGAP` | legacy-only | int | ticks | `<= 1.0.0` only | `0` | timing (legacy) | Deprecated for `>= 1.0.0` (ignored). |
+| `#RELATIVE` | legacy-only | YES/NO | - | `<= 1.0.0` only | `NO` | timing (legacy) | If `YES`, enables legacy relative beat-offset semantics (Section 4.3). For `>= 1.0.0`, song is invalid (USDX behavior). |
+| `#PREVIEWSTART` | no | float | sec | all | `0` | none | Optional preview cue point (UI). |
+| `#MEDLEYSTARTBEAT` | no | int | beats | all | unset | none | Only allowed when `RELATIVE` is false (USDX behavior). |
+| `#MEDLEYENDBEAT` | no | int | beats | all | unset | none | Only allowed when `RELATIVE` is false (USDX behavior). |
+| `#CALCMEDLEY` | no | OFF/ON | - | all | ON | none | Controls medley auto-calc in USDX. |
+| `#DUETSINGERP1` | legacy-only | string | - | `<= 1.0.0` only | unset | none | Deprecated for `>= 1.0.0` (ignored); legacy duet singer metadata. |
+| `#DUETSINGERP2` | legacy-only | string | - | `<= 1.0.0` only | unset | none | Deprecated for `>= 1.0.0` (ignored); legacy duet singer metadata. |
+| `#P1` | no | string | - | all | unset | none | Duet singer display name for Player 1. |
+| `#P2` | no | string | - | all | unset | none | Duet singer display name for Player 2. |
+
+### A.1.1 Unknown/unsupported header tags
+Unknown header tags MUST be preserved as `ParsedSong.header.customTags` (Appendix C) in the order encountered.
+
+## A.2 Body tokens (USDX-aligned)
+
+All body lines are tokenized by the first non-space character. Unknown tokens MUST be ignored with a warning diagnostic unless they cause numeric-parse failure for a recognized token (Section 4.3).
+
+### A.2.1 End of song
+| Token | Grammar | Meaning |
+|---|---|---|
+| `E` | `E` | End of song data. Parsing stops. |
+
+### A.2.2 Duet track selector
+| Token | Grammar | Meaning |
+|---|---|---|
+| `P1` / `P2` | `P <n>` where `n ∈ {1,2}` | Switch active track for subsequent note/sentence lines. If `n` is not 1 or 2, song is invalid (`ERROR_CORRUPT_SONG_INVALID_DUET_MARKER`). |
+
+### A.2.3 Notes
+| Token | Grammar | NoteType |
+|---|---|---|
+| `:` | `: <startBeat> <duration> <tone> <lyric>` | Normal |
+| `*` | `* <startBeat> <duration> <tone> <lyric>` | Golden |
+| `F` | `F <startBeat> <duration> <tone> <lyric>` | Freestyle |
+| `R` | `R <startBeat> <duration> <tone> <lyric>` | Rap |
+| `G` | `G <startBeat> <duration> <tone> <lyric>` | RapGolden |
+
+Rules:
+- `duration==0` MUST be converted to `F` (Freestyle) with a warning (USDX behavior; Section 4.3).
+- In legacy RELATIVE mode, `startBeat` is offset by `Rel[track]` (Section 4.3).
+- The lyric field MAY be empty; implementations MUST preserve it as-authored.
+
+### A.2.4 Sentence/line break
+| Token | Grammar | Meaning |
+|---|---|---|
+| `-` | `- <startBeat> [<delta>]` | Sentence ends; new line begins at `startBeat`. In legacy RELATIVE mode, the optional second integer updates relative offset (USDX behavior). |
+
+### A.2.5 BPM change marker
+| Token | Grammar | Meaning |
+|---|---|---|
+| `B` | `B <startBeat> <bpm>` | Adds a BPM segment starting at `startBeat` (file beat). Internal BPM is `bpm * 4` (Section 5.2). In legacy RELATIVE mode, USDX applies `Rel[0]` to the beat value. |
+
+## A.3 Legacy RELATIVE mode (summary)
+If `#RELATIVE:YES` in a legacy song (`#VERSION` absent or `< 1.0.0`):
+- Each track maintains a `Rel[track]` beat offset applied to note and `-` start beats.
+- BPM change `B` uses `Rel[0]` (track 0) offset.
 
 # Appendix B: Protocol Schemas
 
-TODO: JSON schemas for all protocol messages.
+This appendix is **normative** and defines JSON Schemas for MVP protocol messages described in Section 8.
 
+Schema notes:
+- Schemas use JSON Schema Draft 2020-12.
+- `additionalProperties` is set to `false` to keep fixtures deterministic for MVP.
+
+## B.1 Common envelope
+
+All messages are JSON objects and MUST include:
+- `type` (string)
+- `protocolVersion` (int; MUST be `1` in MVP)
+- `tsTvMs` (optional; TV may include)
+
+## B.2 Schemas
+
+### B.2.1 `hello`
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "hello",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "protocolVersion", "clientId", "deviceName", "appVersion", "capabilities"],
+  "properties": {
+    "type": {"const": "hello"},
+    "protocolVersion": {"type": "integer", "const": 1},
+    "tsTvMs": {"type": "number"},
+    "clientId": {"type": "string", "minLength": 8},
+    "deviceName": {"type": "string", "minLength": 1},
+    "appVersion": {"type": "string", "minLength": 1},
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "pitchFps": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}
+```
+
+### B.2.2 `assignPlayer`
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "assignPlayer",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "protocolVersion", "playerId", "thresholdIndex"],
+  "properties": {
+    "type": {"const": "assignPlayer"},
+    "protocolVersion": {"type": "integer", "const": 1},
+    "tsTvMs": {"type": "number"},
+    "playerId": {"type": "string", "enum": ["P1", "P2"]},
+    "thresholdIndex": {"type": "integer", "minimum": 0, "maximum": 7},
+    "effectiveMicDelayMs": {"type": "integer", "minimum": 0}
+  }
+}
+```
+
+### B.2.3 `sessionState`
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "sessionState",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "protocolVersion", "sessionId", "slots", "inSong"],
+  "properties": {
+    "type": {"const": "sessionState"},
+    "protocolVersion": {"type": "integer", "const": 1},
+    "tsTvMs": {"type": "number"},
+    "sessionId": {"type": "string", "minLength": 1},
+    "slots": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["P1", "P2"],
+      "properties": {
+        "P1": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["connected", "deviceName"],
+          "properties": {
+            "connected": {"type": "boolean"},
+            "deviceName": {"type": "string"}
+          }
+        },
+        "P2": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["connected", "deviceName"],
+          "properties": {
+            "connected": {"type": "boolean"},
+            "deviceName": {"type": "string"}
+          }
+        }
+      }
+    },
+    "inSong": {"type": "boolean"},
+    "songTimeSec": {"type": "number"}
+  }
+}
+```
+
+### B.2.4 `ping` / `pong` (clock sync)
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "ping": {
+      "title": "ping",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "protocolVersion", "nonce", "tTvSendMs"],
+      "properties": {
+        "type": {"const": "ping"},
+        "protocolVersion": {"type": "integer", "const": 1},
+        "tsTvMs": {"type": "number"},
+        "nonce": {"type": "string", "minLength": 1},
+        "tTvSendMs": {"type": "integer"}
+      }
+    },
+    "pong": {
+      "title": "pong",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "protocolVersion", "nonce", "tTvSendMs", "tPhoneRecvMs", "tPhoneSendMs"],
+      "properties": {
+        "type": {"const": "pong"},
+        "protocolVersion": {"type": "integer", "const": 1},
+        "tsTvMs": {"type": "number"},
+        "nonce": {"type": "string", "minLength": 1},
+        "tTvSendMs": {"type": "integer"},
+        "tPhoneRecvMs": {"type": "integer"},
+        "tPhoneSendMs": {"type": "integer"},
+        "tTvRecvMs": {"type": "integer"}
+      }
+    }
+  }
+}
+```
+
+### B.2.5 `error`
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "error",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "protocolVersion", "code", "message"],
+  "properties": {
+    "type": {"const": "error"},
+    "protocolVersion": {"type": "integer", "const": 1},
+    "tsTvMs": {"type": "number"},
+    "code": {"type": "string", "minLength": 1},
+    "message": {"type": "string", "minLength": 1}
+  }
+}
+```
+
+### B.2.6 `assignSinger`
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "assignSinger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "protocolVersion", "sessionId", "songInstanceId", "role"],
+  "properties": {
+    "type": {"const": "assignSinger"},
+    "protocolVersion": {"type": "integer", "const": 1},
+    "tsTvMs": {"type": "number"},
+    "sessionId": {"type": "string", "minLength": 1},
+    "songInstanceId": {"type": "string", "minLength": 1},
+    "role": {"type": "string", "enum": ["singer", "spectator"]},
+    "playerId": {"type": "string", "enum": ["P1", "P2"]},
+    "difficulty": {"type": "string", "enum": ["Easy", "Medium", "Hard"]},
+    "thresholdIndex": {"type": "integer", "minimum": 0, "maximum": 7},
+    "effectiveMicDelayMs": {"type": "integer", "minimum": 0},
+    "expectedPitchFps": {"type": "integer", "minimum": 1},
+    "startMode": {"type": "string", "enum": ["countdown", "live"]},
+    "countdownMs": {"type": "integer", "minimum": 0}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"role": {"const": "singer"}}},
+      "then": {"required": ["playerId", "difficulty", "thresholdIndex", "effectiveMicDelayMs", "expectedPitchFps", "startMode"]}
+    },
+    {
+      "if": {"properties": {"startMode": {"const": "countdown"}}},
+      "then": {"required": ["countdownMs"]}
+    }
+  ]
+}
+```
+
+### B.2.7 `pitchFrame`
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pitchFrame",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "protocolVersion", "playerId", "seq", "tCaptureMs", "toneValid"],
+  "properties": {
+    "type": {"const": "pitchFrame"},
+    "protocolVersion": {"type": "integer", "const": 1},
+    "playerId": {"type": "string", "enum": ["P1", "P2"]},
+    "seq": {"type": "integer", "minimum": 0},
+    "tCaptureMs": {"type": "integer"},
+    "toneValid": {"type": "boolean"},
+    "midiNote": {"type": ["integer", "null"], "minimum": 0, "maximum": 127},
+    "maxAmp": {"type": "number", "minimum": 0, "maximum": 1},
+    "thresholdIndex": {"type": "integer", "minimum": 0, "maximum": 7}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"toneValid": {"const": false}}},
+      "then": {"properties": {"midiNote": {"type": "null"}}}
+    }
+  ]
+}
+```
+
+### B.2.8 `pitchBatch`
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pitchBatch",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "protocolVersion", "frames"],
+  "properties": {
+    "type": {"const": "pitchBatch"},
+    "protocolVersion": {"type": "integer", "const": 1},
+    "frames": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#B.2.7"}
+    }
+  }
+}
+```
 # Appendix C: Parsed Song Model (Normative)
 
 This appendix defines the **normative in-memory representation** of a parsed USDX `.txt` song.
