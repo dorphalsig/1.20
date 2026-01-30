@@ -1,0 +1,11 @@
+#TITLE:RelLegacy
+#ARTIST:Test
+#MP3:audio.mp3
+#BPM:120
+#RELATIVE:YES
+- 0 4
+: 0 4 0 la
+B 8 60
+- 4 4
+: 0 4 0 la
+E

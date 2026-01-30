@@ -1,0 +1,8 @@
+#VERSION:1.0.0
+#TITLE:Dur0
+#ARTIST:Test
+#AUDIO:audio.ogg
+#BPM:120
+: 0 0 0 la
+- 1
+E
