@@ -15,6 +15,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-30 05:24 CET | TBD | Specify legacy `#RELATIVE:YES` semantics (format <1.0.0) including per-track Rel[] accumulator and BPM-change startBeat shifting, matching USDX. |
 | 2026-01-30 05:23 CET | TBD | Align `#VERSION` handling with USDX: default to legacy 0.3.0 when absent; require parse when present; reject versions >= 2.0.0. |
 | 2026-01-30 05:22 CET | TBD | Align `#GAP` with USDX parsing: treat GAP as float milliseconds (fractional ms allowed) and define `GAPms` accordingly. |
 | 2026-01-30 04:56 CET | TBD | Specify an NTP-lite clock sync (4 timestamps + best-of-N) for mapping phone tCaptureMs to TV time. |
@@ -449,7 +450,28 @@ Token-specific behavior:
 - For legacy versions, apply `#ENCODING` if present; decode failure -> invalid.
 
 **Logging**
+
 - All invalidation MUST include a concise reason string suitable for display in debug invalid songs listing.
+
+### Legacy RELATIVE semantics (parity-critical for format < 1.0.0)
+
+If `#RELATIVE:YES` is present (and `#VERSION` is absent or `< 1.0.0`), the file uses a running beat-offset per track.
+
+State:
+- `Rel[track]` starts at 0 for each track (P1/P2).
+
+Rules:
+- For a sentence line `- <startBeat> <delta>` (two integers in relative mode):
+  - `effectiveStartBeat = startBeat + Rel[track]`
+  - Set the new line start beat to `effectiveStartBeat`.
+  - Then update `Rel[track] = Rel[track] + delta`.
+- For a note line `<token> <startBeat> <duration> <tone> ...` in relative mode:
+  - `effectiveStartBeat = startBeat + Rel[track]`.
+  - `duration` is not affected by `Rel`.
+- For an in-song BPM line `B <startBeat> <bpm>` in relative mode:
+  - `effectiveStartBeat = startBeat + Rel[0]` (track 0 offset is used, even in duet).
+
+If `#RELATIVE` is present with a value other than `YES`, treat it as `NO`.
 
 # 5. Timing and Beat Model (Parity-Critical)
 
