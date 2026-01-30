@@ -15,6 +15,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-30 04:56 CET | TBD | Specify an NTP-lite clock sync (4 timestamps + best-of-N) for mapping phone tCaptureMs to TV time. |
 | 2026-01-30 04:55 CET | TBD | Define maxAmp normalization for phone voicing thresholding (0..1) to remove ambiguity. |
 | 2026-01-30 04:53 CET | TBD | Align audio tag requirements with USDX: require AUDIO or MP3 (not version-gated); resolve relative paths against the .txt directory (subpaths allowed). |
 | 2026-01-30 04:49 CET | TBD | Align pitch protocol with USDX: phone sends MIDI note numbers; TV derives USDX tone scale (C2=0) and applies USDX octave normalization. |
@@ -974,7 +975,7 @@ Validation:
 
 These defaults are chosen to be playable on typical home WiFi while keeping perceived A/V sync acceptable for karaoke (not esports).
 
-- Ping/pong: every **2s** per phone; use median of last 5 RTTs for offset smoothing.
+- Clock sync ping/pong: every **2s** per phone; compute a phone->TV `clockOffsetMs` using the NTP-lite method in Section 9.1.1 and smooth using the median of the last 5 samples.
 
 - Pitch frame rate: **50 fps** (20ms interval). If phone cant sustain it, allow 25 fps but TV scoring must still sample at detection beats.
 
@@ -992,6 +993,46 @@ These defaults are chosen to be playable on typical home WiFi while keeping perc
 
 - Disconnect:
  - No pause; disconnected player scores 0 until reconnect.
+
+### 9.1.1 Clock Sync (NTP-lite, deterministic)
+
+Goal: map each phone pitch frame `tCaptureMs` (phone monotonic milliseconds) into the TV monotonic time domain for jitter buffering and lateness estimation.
+
+Clock model:
+- Phone and TV clocks are independent monotonic timers.
+- We estimate `clockOffsetMs` such that:
+  - `tTvEstMs = tPhoneMs + clockOffsetMs`
+
+Messages (normative; reuse existing ping/pong envelope):
+- `ping` (TV -> phone):
+  - `tTvSendMs` (TV monotonic ms at send)
+- `pong` (phone -> TV):
+  - `tTvSendMs` (echo)
+  - `tPhoneRecvMs` (phone monotonic ms at receive of ping)
+  - `tPhoneSendMs` (phone monotonic ms at send of pong)
+  - `tTvRecvMs` (TV monotonic ms at receive of pong; filled by TV at receipt)
+
+Per-sample computation (normative):
+- Let:
+  - `t1 = tTvSendMs`
+  - `t2 = tPhoneRecvMs`
+  - `t3 = tPhoneSendMs`
+  - `t4 = tTvRecvMs`
+- Round-trip delay estimate:
+  - `rttMs = (t4 - t1) - (t3 - t2)`
+- Offset estimate (TV time minus phone time):
+  - `offsetMs = ((t2 - t1) + (t3 - t4)) / 2`
+
+Sample selection/smoothing (normative, simplest reliable):
+- Keep the last 5 samples per phone.
+- Discard samples with `rttMs < 0` or `rttMs > 2000`.
+- Choose the sample with the smallest `rttMs` as the current `clockOffsetMs` (best-of-N reduces WiFi jitter).
+
+Usage (normative):
+- When a `pitchFrame` arrives, compute:
+  - `frameTimestampPhoneMappedToTv = tCaptureMs + clockOffsetMs`
+- `arrivalTimeTv` is the TV monotonic receive time of the `pitchFrame`.
+- `latenessMs = arrivalTimeTv - frameTimestampPhoneMappedToTv`.
 
 ## 9.2 Auto Mic Delay Adjust (ON by default)
 
