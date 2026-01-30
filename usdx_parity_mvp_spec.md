@@ -15,6 +15,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-30 04:49 CET | TBD | Align pitch protocol with USDX: phone sends MIDI note numbers; TV derives USDX tone scale (C2=0) and applies USDX octave normalization. |
 | 2026-01-30 04:47 CET | TBD | Align variable-BPM time->beat conversion with USDX: clamp tSec<=0 to beat 0. |
 | 2026-01-30 04:46 CET | TBD | Align beat model with USDX: do not scale note/sentence/B-line beats; only scale BPM by 4. |
 | 2026-01-30 04:45 CET | TBD | Add rolling change record; future edits must append here and prune entries older than 4 hours. |
@@ -624,7 +625,9 @@ while (Tone - TargetTone < -6) Tone := Tone + 12
 
 
 **Notes**
-- The pitch detector produces `toneAbs` (0..48) and `tone = toneAbs mod 12` (pitch class).
+- Phones send `midiNote` (integer semitone index, MIDI note number). The TV derives the USDX-compatible semitone scale:
+  - `toneUsdx = midiNote - 36` (so C2=36 maps to `toneUsdx=0`, matching USDX's C2=0 pitch base)
+  - `Tone = toneUsdx mod 12` (pitch class)
 - After octave normalization, the value compared/scored is the normalized `Tone` (potentially outside 0..11).
 
 **Parity requirement**
@@ -747,7 +750,7 @@ Session state is owned by the TV host app.
  - Connection state (Connecting / Connected / Disconnected)
  - Current assigned role (Singer / Spectator); if Singer, show playerId (P1/P2)
  - Live input level meter
- - Mute toggle: when enabled, the phone MUST continue to stay connected but MUST stream frames as unvoiced (equivalent to `toneValid=false` and no `toneAbs`) so the TV scores silence.
+ - Mute toggle: when enabled, the phone MUST continue to stay connected but MUST stream frames as unvoiced (equivalent to `toneValid=false` and no `midiNote`) so the TV scores silence.
  - Leave session action
 
 **Wireframes (phone app, spec-only interactions)**
@@ -906,7 +909,7 @@ Phones send only DSP-derived observations (pitch frames and optional confidence/
 The TV is the single source of truth for timeline alignment, note matching, and scoring.
 
 
- Option A: phone sends `toneValid` + `toneAbs` at 50 fps.
+Option A: phone sends `toneValid` + `midiNote` at 50 fps.
 
 **Implementation requirements (MVP)**
 
@@ -918,32 +921,30 @@ The TV is the single source of truth for timeline alignment, note matching, and 
  - `seq` (uint32, increments by 1 per frame)
  - `tCaptureMs` (phone monotonic ms)
  - `toneValid` (bool) MUST match USDX-style thresholding
- - `toneAbs` (int or null) absolute semitone index in the same domain used by chart pitch values (see scoring section)
+ - `midiNote` (int or null) MIDI note number (0..127). The TV MUST translate this to USDX semitone scale as `toneUsdx = midiNote - 36`.
 
-ToneAbs domain (normative):
-- `toneAbs` represents an absolute semitone index in [0..48] (49 halftones).
-- `toneAbs=33` corresponds to A4 = 440.0 Hz.
-- `toneAbs=0` corresponds to C2 = 65.4064 Hz.
-- Mapping from `toneAbs` to frequency is:
-  `f_hz(toneAbs) = 440.0 * 2^((toneAbs - 33)/12)`
+MIDI domain (normative):
+- `midiNote=69` corresponds to A4 = 440.0 Hz.
+- Mapping from `midiNote` to frequency is:
+  `f_hz(midiNote) = 440.0 * 2^((midiNote - 69)/12)`
 
 Phone-side computation (normative):
 - If the phone pitch tracker produces an estimated fundamental frequency `f0_hz` (Hz):
-  - If `f0_hz <= 0` or unvoiced -> `toneValid=false` and `toneAbs=null`.
+  - If `f0_hz <= 0` or unvoiced -> `toneValid=false` and `midiNote=null`.
   - Else compute:
-    - `toneAbs_raw = 33 + 12 * log2(f0_hz / 440.0)`
-    - `toneAbs = clamp(round(toneAbs_raw), 0, 48)`
-- If the phone pitch tracker produces a semitone index directly, it MUST be converted/clamped to the same [0..48] domain.
+    - `midi_raw = 69 + 12 * log2(f0_hz / 440.0)`
+    - `midiNote = clamp(round(midi_raw), 0, 127)`
+- If the phone pitch tracker produces a semitone index directly, it MUST be converted/clamped to the same [0..127] domain.
 
 Voicing/thresholding (normative):
 - The TV selects a noise threshold via `thresholdIndex` (0..7) and sends it in `assignPlayer`/`assignSinger`.
 - The phone MUST compute `toneValid` using the following thresholds on normalized peak amplitude `maxAmp` (0..1):
   - thresholdValueByIndex = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40, 0.60]
   - `toneValid = (maxAmp >= thresholdValueByIndex[thresholdIndex]) AND (pitch_estimate_succeeded)`
-- When `toneValid=false`, the phone MUST set `toneAbs=null` (or omit it).
+- When `toneValid=false`, the phone MUST set `midiNote=null` (or omit it).
 
 Receiver semantics (normative):
-- The receiver MUST NOT interpret `toneAbs=0` as silence. Silence/unvoiced is represented only by `toneValid=false`.
+- The receiver MUST NOT interpret any specific `midiNote` value (including 0) as silence. Silence/unvoiced is represented only by `toneValid=false`.
 - Fields (optional but recommended):
  - `maxAmp` (float 0..1) debugging/telemetry only
  - `thresholdIndex` (int 0..7) debugging only
@@ -1472,7 +1473,7 @@ Actions:
 
 ## 11.2 Golden Scoring Fixtures
 
- Beat-indexed test streams (toneValid/toneAbs) with expected Notes/Golden/Line/Total outputs (exact).
+ Beat-indexed test streams (toneValid/midiNote) with expected Notes/Golden/Line/Total outputs (exact).
 
 ## 11.3 Live Network Tests
 
@@ -1494,12 +1495,12 @@ Actions:
 
 Appendix C contains normative input fixtures and their expected, deterministic receiver-side reconstruction results.
 
-The fixtures in this appendix are NOT end-to-end scoring fixtures. They validate protocol parsing, ordering, timestamp handling, and the semantics of toneValid/toneAbs.
+The fixtures in this appendix are NOT end-to-end scoring fixtures. They validate protocol parsing, ordering, timestamp handling, and the semantics of toneValid/midiNote.
 
 General rules (applies to all Appendix C fixtures):
 - The receiver MUST be able to parse all messages and ignore unknown fields.
 - The receiver MUST reconstruct an ordered frame stream using frame.seq and/or frame.ts (see Section 9), independent of message arrival time.
-- The receiver MUST NOT interpret toneAbs=0 as silence. Silence/unvoiced is represented by toneValid=false.
+- The receiver MUST NOT interpret any specific `midiNote` value (including 0) as silence. Silence/unvoiced is represented by `toneValid=false`.
 
 ## C.1 gangnamstyle-normal-5s (protocol + ordered frames)
 
@@ -1521,13 +1522,13 @@ Expected result (receiver reconstruction):
   "expected_receiver_reconstruction": {
     "fps": 50.0,
     "frame_count": 250,
-    "missing_toneAbs": 0,
+    "missing_midiNote": 0,
     "seq": {
       "max": 249,
       "min": 0,
       "must_be_contiguous": true
     },
-    "toneAbs_counts": {
+    "midiNote_counts": {
       "0": 25,
       "1": 25,
       "2": 25,
@@ -1550,7 +1551,7 @@ Expected result (receiver reconstruction):
   },
   "fixture_file": "appendixC_gangnamstyle_normal_5s_stream.json",
   "notes": [
-    "toneAbs=0 does NOT mean silence. Silence/unvoiced MUST be represented by toneValid=false.",
+    "No specific midiNote value implies silence. Silence/unvoiced MUST be represented by toneValid=false.",
     "This fixture is synthetic and is used to validate protocol parsing, ordering, and basic pitch frame handling (not musical correctness)."
   ]
 }
@@ -1576,13 +1577,13 @@ Expected result (receiver reconstruction):
   "expected_receiver_reconstruction": {
     "fps": 50.0,
     "frame_count": 250,
-    "missing_toneAbs": 65,
+    "missing_midiNote": 65,
     "seq": {
       "max": 249,
       "min": 0,
       "must_be_contiguous": true
     },
-    "toneAbs_counts_for_toneValid_true": {
+    "midiNote_counts_for_toneValid_true": {
       "0": 13,
       "1": 18,
       "2": 14,
@@ -1608,7 +1609,7 @@ Expected result (receiver reconstruction):
   },
   "fixture_file": "appendixC_gangnamstyle_rap_5s_stream.json",
   "notes": [
-    "For frames where toneValid=false, toneAbs is omitted. The receiver MUST treat those frames as unvoiced/silence for scoring and UI.",
+    "For frames where toneValid=false, midiNote is omitted. The receiver MUST treat those frames as unvoiced/silence for scoring and UI.",
     "This fixture validates handling of intermittent unvoiced frames and larger batch sizes."
   ]
 }
@@ -1667,9 +1668,9 @@ Purpose: verify seq monotonicity and batch parsing.
 Inputs: a pitch fixture containing (a) a `pitchBatch` with 5 frames, then (b) a single `pitchFrame` with a lower `seq`.
 Expected outcome: batched frames are accepted in order; the regressing `seq` frame is dropped and produces a warning diagnostic (Section 8.3).
 
-## D.8 toneAbs octave normalization scoring
+## D.8 midiNote octave normalization scoring
 Purpose: verify octave wrapping logic.
-Inputs: song fixture with one Normal note at target tone T for a short duration. Pitch fixture where phone sends `toneAbs` corresponding to pitch class T but an octave away (T +/- 12) while `toneValid=true`.
+Inputs: song fixture with one Normal note at target tone T for a short duration. Pitch fixture where phone sends `midiNote` whose derived `toneUsdx = midiNote - 36` is an octave away (T +/- 12) while `toneValid=true`.
 Expected outcome: detection beats during the note score as hits as if the singer were in the closest octave (Section 6.4).
 
 ## D.9 Rap presence-only scoring gate
