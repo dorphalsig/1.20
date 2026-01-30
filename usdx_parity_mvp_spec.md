@@ -1,7 +1,7 @@
 Android Karaoke Game
 USDX Parity MVP Functional Specification
 
-Version: 1.4
+Version: 1.5
 
 Date: 2026-01-30
 
@@ -19,6 +19,7 @@ Status: Draft
 | 2026-01-30 16:30 CET | TBD | Specify "skip intro" next-line start time derivation (USDX-parity: upper line, first note start beat; duet uses min). |
 | 2026-01-30 16:33 CET | TBD | Specify scoring beat stepping: evaluate all integer beats in (oldBeatD, currentBeatD] (USDX parity). |
 | 2026-01-30 16:34 CET | TBD | Define normative minimum library index record fields for Song Select/Search without re-parsing. |
+| 2026-01-30 16:36 CET | TBD | Define structured diagnostics schema and minimum invalidation codes for invalid song export/troubleshooting. |
 
 
 
@@ -458,7 +459,26 @@ Token-specific behavior:
 
 **Logging**
 
-- All invalidation MUST include a concise reason string suitable for display in debug invalid songs listing.
+All invalidation MUST include a concise reason string suitable for display in a debug invalid songs listing.
+
+Diagnostics record schema (normative)
+- Implementations MUST produce a structured diagnostics list per song load attempt, where each entry has:
+  - `severity`: one of `info` | `warn` | `invalid`.
+  - `code`: short stable string (see the minimum code set below).
+  - `message`: human-readable description.
+  - `txtUri`: song TXT identifier.
+  - `lineNumber`: optional 1-based line number within the TXT file, present whenever a specific line caused the issue.
+- For any `isValid=false` song (Section 3.3), there MUST be at least one diagnostics entry with `severity=invalid`, and the song's `invalidReasonCode` MUST equal that entry's `code`.
+
+Minimum invalidation codes (parity-aligned)
+- `ERROR_CORRUPT_SONG_FILE_NOT_FOUND`: required audio file missing/unresolvable.
+- `ERROR_CORRUPT_SONG_NO_NOTES`: after sentence cleanup, no remaining sentences.
+- `ERROR_CORRUPT_SONG_NO_BREAKS`: track contains zero sentence breaks (`-`).
+- `ERROR_CORRUPT_SONG_MISSING_REQUIRED_HEADER`: missing TITLE/ARTIST/AUDIO-or-MP3/BPM.
+- `ERROR_CORRUPT_SONG_MALFORMED_HEADER`: required header present but malformed/unparseable.
+- `ERROR_CORRUPT_SONG_MALFORMED_BODY`: recognized body token but numeric field parse fails.
+- `ERROR_CORRUPT_SONG_INVALID_VERSION`: VERSION exists but fails to parse, or VERSION >= 2.0.0.
+- `ERROR_CORRUPT_SONG_INVALID_DUET_MARKER`: `P` token present with value other than P1/P2.
 
 ### Legacy RELATIVE semantics (parity-critical for format < 1.0.0)
 
