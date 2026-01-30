@@ -15,6 +15,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-30 05:25 CET | TBD | Define duplicate known header tags behavior: last successfully parsed value wins (USDX-aligned). |
 | 2026-01-30 05:24 CET | TBD | Specify legacy `#RELATIVE:YES` semantics (format <1.0.0) including per-track Rel[] accumulator and BPM-change startBeat shifting, matching USDX. |
 | 2026-01-30 05:23 CET | TBD | Align `#VERSION` handling with USDX: default to legacy 0.3.0 when absent; require parse when present; reject versions >= 2.0.0. |
 | 2026-01-30 05:22 CET | TBD | Align `#GAP` with USDX parsing: treat GAP as float milliseconds (fractional ms allowed) and define `GAPms` accordingly. |
@@ -383,6 +384,7 @@ Header processing is best-effort and MUST continue past unknown or non-fatal iss
 
 - Header lines are read from the top of the file while the line is either empty or starts with `#`.
 - Tag names are case-insensitive; matching MUST be performed on `Uppercase(Trim(TagName))`.
+- Duplicate known tags: if the same known tag appears multiple times, the **last** successfully parsed value wins (earlier values are overwritten).
 - Each header line is classified into exactly one of:
   - **Well-formed tag**: `#NAME:VALUE` where `NAME` is non-empty.
   - **No separator**: a line starting with `#` that contains no `:`.
