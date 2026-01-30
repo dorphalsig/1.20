@@ -15,6 +15,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-30 04:55 CET | TBD | Define maxAmp normalization for phone voicing thresholding (0..1) to remove ambiguity. |
 | 2026-01-30 04:53 CET | TBD | Align audio tag requirements with USDX: require AUDIO or MP3 (not version-gated); resolve relative paths against the .txt directory (subpaths allowed). |
 | 2026-01-30 04:49 CET | TBD | Align pitch protocol with USDX: phone sends MIDI note numbers; TV derives USDX tone scale (C2=0) and applies USDX octave normalization. |
 | 2026-01-30 04:47 CET | TBD | Align variable-BPM time->beat conversion with USDX: clamp tSec<=0 to beat 0. |
@@ -937,6 +938,9 @@ Phone-side computation (normative):
 - If the phone pitch tracker produces a semitone index directly, it MUST be converted/clamped to the same [0..127] domain.
 
 Voicing/thresholding (normative):
+- `maxAmp` definition (normative): normalized peak amplitude for the audio window that produced the pitch estimate for this frame.
+  - If input is 16-bit signed PCM, compute `maxAmp = clamp(max(abs(sample_i)) / 32768.0, 0, 1)` over the window.
+  - If input is floating-point samples in [-1..1], compute `maxAmp = clamp(max(abs(sample_i)), 0, 1)`.
 - The TV selects a noise threshold via `thresholdIndex` (0..7) and sends it in `assignPlayer`/`assignSinger`.
 - The phone MUST compute `toneValid` using the following thresholds on normalized peak amplitude `maxAmp` (0..1):
   - thresholdValueByIndex = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40, 0.60]
