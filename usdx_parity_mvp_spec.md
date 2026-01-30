@@ -1,7 +1,7 @@
 Android Karaoke Game
 USDX Parity MVP Functional Specification
 
-Version: 1.2
+Version: 1.3
 
 Date: 2026-01-30
 
@@ -17,6 +17,7 @@ Status: Draft
 | --- | --- | --- |
 | 2026-01-30 14:46 CET | TBD | Remove all prior acceptance test artifact references (Section 11 + Appendices C/D) to allow new acceptance criteria content. |
 | 2026-01-30 16:30 CET | TBD | Specify "skip intro" next-line start time derivation (USDX-parity: upper line, first note start beat; duet uses min). |
+| 2026-01-30 16:33 CET | TBD | Specify scoring beat stepping: evaluate all integer beats in (oldBeatD, currentBeatD] (USDX parity). |
 
 
 
@@ -581,6 +582,11 @@ Gameplay behaviors that depend on START/END (normative)
 ## 6.1 Scoring Overview
 
  Beat-based scoring, normalized to 10000 total. Line bonus ON reserves 1000 for line bonus and distributes remaining points via note value normalization.
+
+Scoring beat stepping (parity-critical)
+- Implementations MUST evaluate scoring on every integer detection beat `b` in the interval `(oldBeatD, currentBeatD]` (i.e., from `oldBeatD+1` through `currentBeatD`, inclusive).
+  - `oldBeatD` and `currentBeatD` are the scoring-beat cursors defined in Section 5.1 (CurrentBeatD is derived from scoring time and includes the `-0.5` offset before flooring).
+- For each evaluated beat `b`, the active note window test MUST use the boundary convention from Section 5.2: `noteActive if startBeat <= b < endBeat`.
 
 ## 6.2 Note Types
 
