@@ -1,7 +1,7 @@
 Android Karaoke Game
 USDX Parity MVP Functional Specification
 
-Version: 1.6
+Version: 1.7
 
 Date: 2026-01-30
 
@@ -15,6 +15,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-30 22:09 CET | Assistant | Add Appendix E worked numeric examples (timing + scoring) to make acceptance fixtures deterministic without audio/DSP. |
 | 2026-01-30 21:12 CET | Assistant | Add a normative parsed-song in-memory model (Appendix C) plus a JSON fixture serialization (Appendix D) to enable portable acceptance/unit fixtures. |
 
 
@@ -85,6 +86,7 @@ Conventions:
 - Appendix B: Protocol Schemas
 - Appendix C: Parsed Song Model (Normative)
 - Appendix D: ParsedSongModel Fixture Serialization (Normative)
+- Appendix E: Worked Examples (Normative for fixtures)
 
 # 1. Product Contract
 
@@ -1769,5 +1771,167 @@ Each line is a JSON object with the same required fields as Section 8.3 `pitchFr
 - `midiNote` (int|null)
 
 Implementations MUST treat missing frames for a scoring beat as `toneValid=false` for that beat (Section 9.1).
+# Appendix E: Worked Examples (Normative for fixtures)
 
+This appendix provides worked numeric examples to remove ambiguity in:
+- timing/beat conversion (Section 5)
+- beat stepping and note-window boundaries (Sections 5.2, 6.1)
+- scoring normalization, line bonus, and rounding (Sections 6.5–6.6)
 
+These examples are intended to be copied into fixtures by providing:
+- `song.txt` (minimal chart)
+- optional `pitchFrames.jsonl` (MIDI-based detection stream)
+- `expected.score.json` (authoritative intermediate values + expected totals)
+
+## E.1 Static BPM beat cursors (highlight vs scoring)
+
+Given:
+- `BPM_file = 120.0`
+- `BPM_internal = BPM_file * 4 = 480.0`
+- `beatsPerSec = BPM_internal / 60.0 = 8.0`
+- `GAPms = 2000`
+- `micDelayMs = 100`
+- `lyricsTimeSec = 5.0`
+
+Compute (Section 5.1):
+- `highlightTimeSec = lyricsTimeSec - (GAPms/1000) = 5.0 - 2.0 = 3.0`
+- `scoringTimeSec  = lyricsTimeSec - ((GAPms+micDelayMs)/1000) = 5.0 - 2.1 = 2.9`
+
+Convert time to beats (Section 5.2, static BPM):
+- `MidBeat_internal(highlight) = 3.0 * 8.0 = 24.0`
+- `CurrentBeat = floor(24.0) = 24`
+
+- `MidBeat_internal(scoring) = 2.9 * 8.0 = 23.2`
+- `CurrentBeatD = floor(23.2 - 0.5) = floor(22.7) = 22`
+
+Implication:
+- A scoring update from `oldBeatD=19` to `currentBeatD=22` MUST evaluate beats `b = 20, 21, 22` (Section 6.1).
+
+## E.2 Variable BPM example (segment walk + clamp)
+
+Song timing:
+- Header: `BPM_file = 120.0` (so `bpm_internal = 480.0`)
+- One BPM change token: `B 16 60.0` (file beats)
+  - At file beat 16, internal BPM becomes `60.0 * 4 = 240.0`
+
+Segment 0:
+- beats: 0..16 (16 file beats)
+- `secPerBeat = 60/480 = 0.125`
+- `segTime = 16 * 0.125 = 2.0s`
+
+Segment 1:
+- beats: 16..∞
+- `secPerBeat = 60/240 = 0.25`
+
+Example A: `tSec = 3.0s`
+- Consume segment 0: `tSec := 3.0 - 2.0 = 1.0`, accumulated beats = 16
+- Inside segment 1: add `tSec * (bpm_internal/60) = 1.0 * (240/60) = 4.0`
+- Result: `MidBeat_internal = 16 + 4 = 20.0`
+
+Example B: clamp behavior (Section 5.2, variable BPM)
+- If `tSec <= 0`, `TimeSecToMidBeatInternal(tSec) = 0`.
+
+## E.3 Beat stepping and note-window boundary convention
+
+Given:
+- `oldBeatD = 10`
+- `currentBeatD = 13`
+
+Then (Section 6.1):
+- Evaluate beats `b = 11, 12, 13` only.
+
+If a note has:
+- `startBeatFile = 11`
+- `durationBeats = 2`
+- `endBeatExclusive = startBeatFile + durationBeats = 13`
+
+Then (Section 5.2 boundary convention):
+- active at `b=11` and `b=12`
+- NOT active at `b=13` (end exclusive)
+
+## E.4 Scoring normalization and line bonus (fully-worked minimal song)
+
+Assume:
+- Line bonus: ON
+- `MaxSongPoints = 9000`
+- `MaxLineBonusPool = 1000`
+
+Create a minimal SOLO track (trackIndex=0) with two non-empty lines:
+
+Line 1:
+- `: 0 4 0 la`
+- `- 4`
+
+Line 2:
+- `* 4 4 0 la`
+- `- 8`
+- `E`
+
+Where (Section 6.2.1):
+- Normal (`:`) has `ScoreFactor=1`
+- Golden (`*`) has `ScoreFactor=2`
+
+Compute `TrackScoreValue` (Section 6.5):
+- Line1 ScoreValue = `4 * 1 = 4`
+- Line2 ScoreValue = `4 * 2 = 8`
+- `TrackScoreValue = 4 + 8 = 12`
+
+Per-beat points (Section 6.6):
+- For Normal hit-beat: `CurBeatPoints = (MaxSongPoints / TrackScoreValue) * 1 = (9000/12) = 750`
+- For Golden hit-beat: `CurBeatPoints = (MaxSongPoints / TrackScoreValue) * 2 = (9000/12) * 2 = 1500`
+
+Perfect performance (all eligible beats hit; `toneValid=true`; pitch in range for Normal/Golden):
+- Line 1 beats b=0..3: `Player.Score = 4 * 750 = 3000`
+- Line 2 beats b=4..7: `Player.ScoreGolden = 4 * 1500 = 6000`
+- Note totals = 9000
+
+Line bonus (Section 6.5):
+- `NonEmptyLines = 2`
+- `LineBonusPerLine = MaxLineBonusPool / NonEmptyLines = 1000 / 2 = 500`
+
+Line 1:
+- `MaxLineScore = MaxSongPoints * (Line1ScoreValue / TrackScoreValue) = 9000 * (4/12) = 3000`
+- At sentence end: `LineScore = (Score + ScoreGolden) - ScoreLast = 3000 - 0 = 3000`
+- `LinePerfection = clamp(LineScore / (MaxLineScore - 2), 0, 1) = clamp(3000/2998, 0, 1) = 1`
+- `ScoreLine += LineBonusPerLine * LinePerfection = 500`
+
+Line 2:
+- `MaxLineScore = 9000 * (8/12) = 6000`
+- `LineScore = 9000 - 3000 = 6000`
+- `LinePerfection = clamp(6000/5998, 0, 1) = 1`
+- `ScoreLine += 500`
+
+So: `Player.ScoreLine = 1000`
+
+Rounding (Section 6.6):
+- `Player.ScoreLineInt = floor(round(ScoreLine)/10)*10 = 1000`
+- `ScoreInt = round(Player.Score/10)*10 = 3000`
+- Since `ScoreInt < Player.Score` is FALSE, `ScoreGoldenInt = floor(Player.ScoreGolden/10)*10 = 6000`
+- `ScoreTotalInt = ScoreInt + ScoreGoldenInt + ScoreLineInt = 10000`
+
+## E.5 Golden rounding direction rule (fractional demonstration)
+
+This example exists only to demonstrate the “golden rounds opposite” rule (Section 6.6).
+
+Assume after accumulation:
+- `Player.Score = 4090.909...`
+- `Player.ScoreGolden = 100.909...`
+
+Compute:
+- `ScoreInt = round(4090.909/10)*10 = 4090`
+- Since `ScoreInt < Player.Score` is TRUE, apply opposite rounding:
+  - `ScoreGoldenInt = ceil(100.909/10)*10 = 110`
+
+## E.6 Minimal fixture files for E.4 (reference layout)
+
+Fixture directory example: `E4_score_linebonus_perfect/`
+
+- `song.txt` contains the exact 2-line chart from E.4.
+- `expected.score.json` contains at least:
+  - `MaxSongPoints`, `MaxLineBonusPool`
+  - `TrackScoreValue`
+  - per-note `CurBeatPoints` values
+  - `Score`, `ScoreGolden`, `ScoreLine`, and the tens-rounded ints
+  - `ScoreTotalInt`
+
+`pitchFrames.jsonl` is OPTIONAL for E.4 if the harness can inject per-beat hit/miss booleans. If the fixture uses the full scoring pipeline, provide `pitchFrames.jsonl` with `toneValid=true` and `midiNote` matching the target tone for each scoring beat.
