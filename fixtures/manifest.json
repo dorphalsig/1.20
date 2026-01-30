@@ -1,0 +1,345 @@
+{
+  "manifestVersion": "1.0",
+  "specVersion": "1.9",
+  "root": "fixtures",
+  "fixtures": [
+    {
+      "id": "S01",
+      "name": "valid_minimal_v1",
+      "tags": ["parser"],
+      "status": "implemented",
+      "paths": {
+        "songTxt": "fixtures/song_txt_variants/01_valid_minimal_v1/song.txt",
+        "audioStub": "fixtures/song_txt_variants/01_valid_minimal_v1/audio.ogg"
+      },
+      "covers": ["4.1", "4.2", "4.3", "Appendix A", "Appendix C", "Appendix D"]
+    },
+    {
+      "id": "S02",
+      "name": "header_duplicates_last_wins",
+      "tags": ["parser"],
+      "status": "implemented",
+      "paths": {
+        "songTxt": "fixtures/song_txt_variants/02_header_duplicates_last_wins/song.txt",
+        "audioStub": "fixtures/song_txt_variants/02_header_duplicates_last_wins/audio.ogg"
+      },
+      "covers": ["4.1", "4.2", "Appendix A"]
+    },
+    {
+      "id": "S03",
+      "name": "unknown_header_tags_preserved",
+      "tags": ["parser"],
+      "status": "implemented",
+      "paths": {
+        "songTxt": "fixtures/song_txt_variants/03_unknown_header_tags/song.txt",
+        "audioStub": "fixtures/song_txt_variants/03_unknown_header_tags/audio.ogg"
+      },
+      "covers": ["4.1", "4.2", "Appendix A", "Appendix C"]
+    },
+    {
+      "id": "S04",
+      "name": "bpm_zero_invalid_required_header",
+      "tags": ["parser"],
+      "status": "implemented",
+      "paths": {
+        "songTxt": "fixtures/song_txt_variants/04_malformed_required_header_bpm/song.txt",
+        "audioStub": "fixtures/song_txt_variants/04_malformed_required_header_bpm/audio.ogg"
+      },
+      "covers": ["4.3", "Appendix A"]
+    },
+    {
+      "id": "S05",
+      "name": "missing_required_artist_invalid",
+      "tags": ["parser"],
+      "status": "implemented",
+      "paths": {
+        "songTxt": "fixtures/song_txt_variants/05_missing_required_artist/song.txt",
+        "audioStub": "fixtures/song_txt_variants/05_missing_required_artist/audio.ogg"
+      },
+      "covers": ["4.3"]
+    },
+    {
+      "id": "S06",
+      "name": "duration_zero_converts_to_freestyle",
+      "tags": ["parser"],
+      "status": "implemented",
+      "paths": {
+        "songTxt": "fixtures/song_txt_variants/06_duration_zero_converts_to_freestyle/song.txt",
+        "audioStub": "fixtures/song_txt_variants/06_duration_zero_converts_to_freestyle/audio.ogg"
+      },
+      "covers": ["4.2", "Appendix A"]
+    },
+    {
+      "id": "S07",
+      "name": "unknown_body_token_ignored",
+      "tags": ["parser"],
+      "status": "implemented",
+      "paths": {
+        "songTxt": "fixtures/song_txt_variants/07_unknown_body_token_ignored/song.txt",
+        "audioStub": "fixtures/song_txt_variants/07_unknown_body_token_ignored/audio.ogg"
+      },
+      "covers": ["4.2", "Appendix A"]
+    },
+    {
+      "id": "S08",
+      "name": "malformed_body_numeric_invalid",
+      "tags": ["parser"],
+      "status": "implemented",
+      "paths": {
+        "songTxt": "fixtures/song_txt_variants/08_malformed_body_numeric/song.txt",
+        "audioStub": "fixtures/song_txt_variants/08_malformed_body_numeric/audio.ogg"
+      },
+      "covers": ["4.3", "Appendix A"]
+    },
+    {
+      "id": "S09",
+      "name": "no_breaks_allowed_usdx",
+      "tags": ["parser"],
+      "status": "implemented",
+      "paths": {
+        "songTxt": "fixtures/song_txt_variants/09_no_breaks_allowed_usdx/song.txt",
+        "audioStub": "fixtures/song_txt_variants/09_no_breaks_allowed_usdx/audio.ogg"
+      },
+      "covers": ["4.2", "4.3", "Appendix A"]
+    },
+    {
+      "id": "S10",
+      "name": "no_notes_invalid",
+      "tags": ["parser"],
+      "status": "implemented",
+      "paths": {
+        "songTxt": "fixtures/song_txt_variants/10_no_notes_invalid/song.txt",
+        "audioStub": "fixtures/song_txt_variants/10_no_notes_invalid/audio.ogg"
+      },
+      "covers": ["4.3", "Appendix A"]
+    },
+    {
+      "id": "S11",
+      "name": "duet_valid_p1_p2",
+      "tags": ["parser"],
+      "status": "implemented",
+      "paths": {
+        "songTxt": "fixtures/song_txt_variants/11_duet_valid/song.txt",
+        "audioStub": "fixtures/song_txt_variants/11_duet_valid/audio.ogg"
+      },
+      "covers": ["4.2", "4.3", "Appendix A", "Appendix C"]
+    },
+    {
+      "id": "S12",
+      "name": "duet_invalid_marker_rejected",
+      "tags": ["parser"],
+      "status": "implemented",
+      "paths": {
+        "songTxt": "fixtures/song_txt_variants/12_duet_invalid_marker/song.txt",
+        "audioStub": "fixtures/song_txt_variants/12_duet_invalid_marker/audio.ogg"
+      },
+      "covers": ["4.3", "Appendix A"]
+    },
+    {
+      "id": "S13",
+      "name": "legacy_relative_yes",
+      "tags": ["parser"],
+      "status": "implemented",
+      "paths": {
+        "songTxt": "fixtures/song_txt_variants/13_legacy_relative_yes/song.txt",
+        "audioStub": "fixtures/song_txt_variants/13_legacy_relative_yes/audio.mp3"
+      },
+      "covers": ["4.2", "Appendix A"]
+    },
+    {
+      "id": "S14",
+      "name": "relative_in_v1_invalid",
+      "tags": ["parser"],
+      "status": "implemented",
+      "paths": {
+        "songTxt": "fixtures/song_txt_variants/14_relative_in_v1_invalid/song.txt",
+        "audioStub": "fixtures/song_txt_variants/14_relative_in_v1_invalid/audio.ogg"
+      },
+      "covers": ["4.3", "Appendix A"]
+    },
+    {
+      "id": "S15",
+      "name": "bpm_change_non_relative",
+      "tags": ["parser"],
+      "status": "implemented",
+      "paths": {
+        "songTxt": "fixtures/song_txt_variants/15_bpm_change_non_relative/song.txt",
+        "audioStub": "fixtures/song_txt_variants/15_bpm_change_non_relative/audio.ogg"
+      },
+      "covers": ["4.2", "5.2", "Appendix A"]
+    },
+    {
+      "id": "S16",
+      "name": "negative_bpm_nonzero_usdx",
+      "tags": ["parser"],
+      "status": "implemented",
+      "paths": {
+        "songTxt": "fixtures/song_txt_variants/16_negative_bpm_nonzero_usdx/song.txt",
+        "audioStub": "fixtures/song_txt_variants/16_negative_bpm_nonzero_usdx/audio.ogg"
+      },
+      "covers": ["4.3", "Appendix A"]
+    },
+    {
+      "id": "S17",
+      "name": "bpm_malformed_non_numeric_invalid",
+      "tags": ["parser"],
+      "status": "implemented",
+      "paths": {
+        "songTxt": "fixtures/song_txt_variants/17_bpm_malformed_non_numeric_invalid/song.txt",
+        "audioStub": "fixtures/song_txt_variants/17_bpm_malformed_non_numeric_invalid/audio.ogg"
+      },
+      "covers": ["4.3", "Appendix A"]
+    },
+
+    {
+      "id": "F01",
+      "name": "song_discovery_validation_acceptance",
+      "tags": ["parser"],
+      "status": "planned",
+      "paths": {
+        "fixtureDir": null
+      },
+      "covers": ["3", "4.3"]
+    },
+    {
+      "id": "F02",
+      "name": "header_parsing_edge_cases",
+      "tags": ["parser"],
+      "status": "planned",
+      "paths": {
+        "fixtureDir": null
+      },
+      "covers": ["4.1", "4.2", "Appendix A", "Appendix C"]
+    },
+    {
+      "id": "F03",
+      "name": "body_grammar_token_recognition_invalidation",
+      "tags": ["parser"],
+      "status": "planned",
+      "paths": {
+        "fixtureDir": null
+      },
+      "covers": ["4.2", "4.3", "Appendix A"]
+    },
+    {
+      "id": "F04",
+      "name": "duet_parsing_track_routing",
+      "tags": ["parser"],
+      "status": "planned",
+      "paths": {
+        "fixtureDir": null
+      },
+      "covers": ["4.2", "4.3", "Appendix A", "Appendix C"]
+    },
+    {
+      "id": "F05",
+      "name": "legacy_relative_mode_semantics",
+      "tags": ["parser"],
+      "status": "planned",
+      "paths": {
+        "fixtureDir": null
+      },
+      "covers": ["4.2", "Appendix A"]
+    },
+    {
+      "id": "F06",
+      "name": "beat_time_conversion_static_bpm",
+      "tags": ["timing"],
+      "status": "planned",
+      "paths": {
+        "fixtureDir": null
+      },
+      "covers": ["5.1", "5.2", "Appendix E"]
+    },
+    {
+      "id": "F07",
+      "name": "beat_time_conversion_variable_bpm",
+      "tags": ["timing"],
+      "status": "planned",
+      "paths": {
+        "fixtureDir": null
+      },
+      "covers": ["5.2", "Appendix E"]
+    },
+    {
+      "id": "F08",
+      "name": "scoring_beat_stepping_interval_semantics",
+      "tags": ["scoring"],
+      "status": "planned",
+      "paths": {
+        "fixtureDir": null
+      },
+      "covers": ["6.1", "5.2", "Appendix E"]
+    },
+    {
+      "id": "F09",
+      "name": "pitch_tolerance_octave_normalization",
+      "tags": ["scoring"],
+      "status": "planned",
+      "paths": {
+        "fixtureDir": null
+      },
+      "covers": ["6.3", "6.4", "Appendix E"]
+    },
+    {
+      "id": "F10",
+      "name": "rap_scoring_tonevalid_gate",
+      "tags": ["scoring"],
+      "status": "planned",
+      "paths": {
+        "fixtureDir": null
+      },
+      "covers": ["6.4", "Appendix A", "Appendix E"]
+    },
+    {
+      "id": "F11",
+      "name": "line_bonus_and_rounding",
+      "tags": ["scoring"],
+      "status": "planned",
+      "paths": {
+        "fixtureDir": null
+      },
+      "covers": ["6.5", "6.6", "Appendix E"]
+    },
+    {
+      "id": "F12",
+      "name": "pitch_stream_validation_semantics",
+      "tags": ["protocol", "scoring"],
+      "status": "planned",
+      "paths": {
+        "fixtureDir": null
+      },
+      "covers": ["8.3", "9.1", "Appendix B", "Appendix D"]
+    },
+    {
+      "id": "F13",
+      "name": "jitter_buffer_selection_staleness",
+      "tags": ["timing", "scoring"],
+      "status": "planned",
+      "paths": {
+        "fixtureDir": null
+      },
+      "covers": ["9.1", "Appendix D"]
+    },
+    {
+      "id": "F14",
+      "name": "clock_sync_ntp_lite",
+      "tags": ["protocol", "timing"],
+      "status": "planned",
+      "paths": {
+        "fixtureDir": null
+      },
+      "covers": ["9.1.1", "8.2", "Appendix B"]
+    },
+    {
+      "id": "F15",
+      "name": "session_lifecycle_reconnect_reclaim",
+      "tags": ["protocol"],
+      "status": "planned",
+      "paths": {
+        "fixtureDir": null
+      },
+      "covers": ["8.2", "7.4", "Appendix B"]
+    }
+  ]
+}
