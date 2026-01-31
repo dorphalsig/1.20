@@ -1,0 +1,49 @@
+{
+  "songId": "F03_freestyle_only",
+  "header": {
+    "title": "Freestyle Only",
+    "artist": "Fixture",
+    "bpmFile": 120.0,
+    "gapMs": 0,
+    "audio": "audio.ogg",
+    "video": null,
+    "cover": null,
+    "background": null,
+    "p1Name": null,
+    "p2Name": null,
+    "relativeMode": false,
+    "version": "1.0.0",
+    "customTags": {}
+  },
+  "timing": {
+    "bpmChanges": [
+      {
+        "startBeatFile": 0,
+        "bpmFile": 120.0
+      }
+    ],
+    "startBeatFile": null,
+    "endBeatFile": null,
+    "notesGapBeatsFile": null
+  },
+  "tracks": [
+    {
+      "trackIndex": 0,
+      "lines": [
+        {
+          "lineIndex": 0,
+          "notes": [
+            {
+              "noteType": "Freestyle",
+              "startBeatFile": 0,
+              "durationBeats": 4,
+              "toneUsdx": 0,
+              "lyric": "la"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "diagnostics": []
+}

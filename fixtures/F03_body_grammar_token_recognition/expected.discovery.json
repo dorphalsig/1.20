@@ -1,0 +1,36 @@
+{
+  "rootRel": "songs_root",
+  "songs": [
+    {
+      "songDirRel": "a/unknown_token_ignored",
+      "songTxtRel": "a/unknown_token_ignored/song.txt",
+      "isValid": true,
+      "invalidReasonCode": null,
+      "invalidLineNumber": null,
+      "body": {
+        "noteTypesOrdered": [
+          "Normal"
+        ]
+      }
+    },
+    {
+      "songDirRel": "b/invalid_malformed_numeric",
+      "songTxtRel": "b/invalid_malformed_numeric/song.txt",
+      "isValid": false,
+      "invalidReasonCode": "ERROR_CORRUPT_SONG_MALFORMED_BODY",
+      "invalidLineNumber": 7
+    },
+    {
+      "songDirRel": "c/duration_zero_converts_to_freestyle",
+      "songTxtRel": "c/duration_zero_converts_to_freestyle/song.txt",
+      "isValid": true,
+      "invalidReasonCode": null,
+      "invalidLineNumber": null,
+      "body": {
+        "noteTypesOrdered": [
+          "Freestyle"
+        ]
+      }
+    }
+  ]
+}

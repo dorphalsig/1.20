@@ -1,0 +1,47 @@
+{
+  "description": "Freestyle note beats contribute 0 points and are excluded from hit detection (Section 6.2).",
+  "perBeat": [
+    {
+      "beat": 0,
+      "activeNoteType": "Freestyle",
+      "toneValid": true,
+      "expected": {
+        "scoreDelta": 0,
+        "scoreGoldenDelta": 0
+      }
+    },
+    {
+      "beat": 1,
+      "activeNoteType": "Freestyle",
+      "toneValid": true,
+      "expected": {
+        "scoreDelta": 0,
+        "scoreGoldenDelta": 0
+      }
+    },
+    {
+      "beat": 2,
+      "activeNoteType": "Freestyle",
+      "toneValid": true,
+      "expected": {
+        "scoreDelta": 0,
+        "scoreGoldenDelta": 0
+      }
+    },
+    {
+      "beat": 3,
+      "activeNoteType": "Freestyle",
+      "toneValid": true,
+      "expected": {
+        "scoreDelta": 0,
+        "scoreGoldenDelta": 0
+      }
+    }
+  ],
+  "expectedTotals": {
+    "score": 0,
+    "scoreGolden": 0,
+    "scoreLine": 0,
+    "scoreTotalInt": 0
+  }
+}
