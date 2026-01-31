@@ -1,7 +1,7 @@
 Android Karaoke Game
 USDX Parity MVP Functional Specification
 
-Version: 1.18
+Version: 1.19
 Date: 2026-01-31
 Owner: TBD
 
@@ -13,6 +13,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-31 11:38 CET | Assistant | Define countdown disconnect handling as a blocking modal on return to Assign Singers. |
 | 2026-01-31 11:37 CET | Assistant | Define invalid-song diagnostics export as CSV via share sheet; overwrite on repeat export. |
 | 2026-01-31 11:36 CET | Assistant | Remove non-MVP Debug entry from Settings root (no dead-end screen). |
 | 2026-01-31 11:25 CET | Assistant | Clarify join resolution: QR encodes full WS endpoint URL including token; join code is the same token (formatted for manual entry); NSD is used for LAN session discovery (especially for manual-code join). |
@@ -1608,7 +1609,29 @@ This is the Add songs workflow.
 - Countdown before scoring begins is controlled by Settings > Gameplay:
  - If Ready countdown is ON: show N-second countdown at 1 Hz (N from setting) then begin scoring.
  - If OFF: begin scoring immediately.
-- If a required singer disconnects during countdown: cancel start and return to Assign Singers with an error message.
+- If a required singer disconnects during countdown: cancel start and return to Assign Singers with a blocking error modal.
+
+**Countdown disconnect error modal (normative)**
+- The modal MUST appear immediately after returning to Assign Singers.
+- The modal MUST be blocking (no background interaction until dismissed).
+- Modal content:
+ - Title: `DISCONNECTED`
+ - Body: `A required singer disconnected during countdown. Please reconnect and start again.`
+ - Single action: `OK`
+- Default focus MUST be on `OK`.
+- On `OK`, the modal MUST close and the user remains on Assign Singers.
+
+**Wireframe (countdown disconnect modal; TV)**
+```text
++--------------------------------------+
+| DISCONNECTED                          |
+| A required singer disconnected         |
+| during countdown.                      |
+| Please reconnect and start again.      |
+|                                      |
+|  > OK                                 |
++--------------------------------------+
+```
 
 **Pause**
 - Back opens Pause overlay:
