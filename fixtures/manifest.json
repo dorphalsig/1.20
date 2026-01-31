@@ -235,9 +235,9 @@
       "id": "F05",
       "name": "legacy_relative_mode_semantics",
       "tags": ["parser"],
-      "status": "planned",
+      "status": "implemented",
       "paths": {
-        "fixtureDir": null
+        "fixtureDir": "fixtures/F05_legacy_relative_mode_semantics"
       },
       "covers": ["4.2", "Appendix A"]
     },

@@ -1,0 +1,53 @@
+{
+  "songId": "F05_legacy_relative_duet_bpm_rel0",
+  "header": {
+    "title": "Legacy Relative Duet BPM",
+    "artist": "Fixture",
+    "bpmFile": 120,
+    "gapMs": 0,
+    "audio": "audio.mp3",
+    "video": null,
+    "cover": null,
+    "background": null,
+    "p1Name": null,
+    "p2Name": null,
+    "relativeMode": true,
+    "version": "0.3.0",
+    "customTags": {}
+  },
+  "timing": {
+    "bpmChanges": [
+      { "startBeatFile": 0, "bpmFile": 120 },
+      { "startBeatFile": 6, "bpmFile": 150 }
+    ],
+    "startBeatFile": null,
+    "endBeatFile": null,
+    "notesGapBeatsFile": null
+  },
+  "tracks": [
+    {
+      "trackIndex": 0,
+      "lines": [
+        {
+          "lineIndex": 0,
+          "notes": [
+            { "noteType": "Normal", "startBeatFile": 4, "durationBeats": 4, "toneUsdx": 0, "lyric": "la" },
+            { "noteType": "Normal", "startBeatFile": 5, "durationBeats": 4, "toneUsdx": 0, "lyric": "na" }
+          ]
+        }
+      ]
+    },
+    {
+      "trackIndex": 1,
+      "lines": [
+        {
+          "lineIndex": 0,
+          "notes": [
+            { "noteType": "Normal", "startBeatFile": 8, "durationBeats": 4, "toneUsdx": 0, "lyric": "lo" }
+          ]
+        }
+      ]
+    }
+  ],
+  "diagnostics": []
+}

@@ -1,0 +1,16 @@
+#TITLE:Legacy Relative Duet BPM
+#ARTIST:Fixture
+#MP3:audio.mp3
+#BPM:120
+#RELATIVE:YES
+P1
+- 0 4
+: 0 4 0 la
+P2
+- 0 8
+: 0 4 0 lo
+B 2 150
+P1
+- 0 0
+: 1 4 0 na
+E
