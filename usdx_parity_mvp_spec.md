@@ -1,7 +1,7 @@
 Android Karaoke Game
 USDX Parity MVP Functional Specification
 
-Version: 1.11
+Version: 1.12
 Date: 2026-01-31
 Owner: TBD
 
@@ -13,8 +13,8 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-31 10:48 CET | Assistant | Specify Rename device dialog UI/behavior (keyboard entry, validation, commit/cancel). |
 | 2026-01-31 10:38 CET | Assistant | Clarify join/roster placement: show compact QR+code join widget on Song List; make roster management canonical in Settings > Connect Phones; align Pairing UX section accordingly. |
-| 2026-01-31 06:43 CET | Assistant | Add Appendix F fixture guide: repo layout + manifest usage + acceptance inventory F01–F15 with required subcases; bump version/date. |
 
 
 
@@ -1273,6 +1273,29 @@ Settings is a simple list of items; selecting one opens a sub-screen.
 - Rename device: opens a rename dialog (TV on-screen keyboard), updates the stored label for that `clientId`.
 - Kick device: confirm then disconnect.
 - Forget device: confirm then remove the stored label for that `clientId` and disconnect.
+
+**Rename dialog (normative)**
+- Selecting **Rename** MUST open a modal rename dialog using the TV on-screen keyboard.
+- The input field MUST be pre-filled with the current display name.
+- The user MAY change the name to any non-empty trimmed string.
+ - If the resulting trimmed string is empty, OK MUST be disabled (or a validation error MUST be shown and the rename MUST NOT be applied).
+- Cancel (or Back) MUST close the dialog without applying changes.
+- OK MUST apply the change immediately, store the new name for that `clientId`, and update the roster display.
+- Default focus MUST be **Cancel**.
+
+**Wireframe (rename dialog; default focus Cancel)**
+```text
++--------------------------------------+
+| RENAME DEVICE                         |
+| Device: <DeviceName>                  |
+|                                      |
+| Name: [ Pixel-7__________ ]           |
+|                                      |
+| [On-screen keyboard]                  |
+|                                      |
+|  > Cancel     OK                      |
++--------------------------------------+
+```
 
 **Wireframe (Connect Phones)**
 ```text
