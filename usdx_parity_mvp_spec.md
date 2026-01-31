@@ -1,7 +1,7 @@
 Android Karaoke Game
 USDX Parity MVP Functional Specification
 
-Version: 1.17
+Version: 1.18
 Date: 2026-01-31
 Owner: TBD
 
@@ -13,6 +13,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-31 11:37 CET | Assistant | Define invalid-song diagnostics export as CSV via share sheet; overwrite on repeat export. |
 | 2026-01-31 11:36 CET | Assistant | Remove non-MVP Debug entry from Settings root (no dead-end screen). |
 | 2026-01-31 11:25 CET | Assistant | Clarify join resolution: QR encodes full WS endpoint URL including token; join code is the same token (formatted for manual entry); NSD is used for LAN session discovery (especially for manual-code join). |
 | 2026-01-31 11:24 CET | Assistant | Specify Scan QR permission-denied flow and NSD permission route; reuse the same blocking error modal for camera/nearby-wifi denial. |
@@ -1480,6 +1481,17 @@ This is the Add songs workflow.
 - The Song Library screen MUST provide a way to export invalid-song diagnostics captured during scanning (Section 3.2).
 - Export MUST include: song path, error reason, and error line number.
 - The UI MAY show an in-app list, but MVP only requires an export action.
+
+**Invalid-song diagnostics export contract (normative)**
+- Export format MUST be CSV (UTF-8).
+- The CSV MUST include a header row with exactly these columns:
+ - `song_path`
+ - `error_reason`
+ - `error_line_number`
+- Each invalid song MUST be one CSV row.
+- Export delivery MUST use the Android share sheet (user chooses destination app/location).
+- If the user triggers export multiple times, the exported file MUST overwrite the previous export (same filename), not create additional copies.
+- Filename MUST be `invalid_song_diagnostics.csv`.
 
 **Wireframe (Song Library)**
 ```text
