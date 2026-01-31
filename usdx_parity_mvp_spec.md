@@ -1,7 +1,7 @@
 Android Karaoke Game
 USDX Parity MVP Functional Specification
 
-Version: 1.19
+Version: 1.20
 Date: 2026-01-31
 Owner: TBD
 
@@ -13,6 +13,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-31 11:39 CET | Assistant | Update Gameplay settings wireframe hints to reflect numeric keypad editing. |
 | 2026-01-31 11:38 CET | Assistant | Define countdown disconnect handling as a blocking modal on return to Assign Singers. |
 | 2026-01-31 11:37 CET | Assistant | Define invalid-song diagnostics export as CSV via share sheet; overwrite on repeat export. |
 | 2026-01-31 11:36 CET | Assistant | Remove non-MVP Debug entry from Settings root (no dead-end screen). |
@@ -1578,7 +1579,7 @@ This is the Add songs workflow.
 | Countdown seconds:      3             |
 | Show pitch bars:        ON            |
 +--------------------------------------+
-| Hints: OK=Toggle/Edit  Back=Return    |
+| Hints: OK=Toggle/Keypad  Back=Return  |
 +--------------------------------------+
 ```
 
