@@ -1,7 +1,7 @@
 Android Karaoke Game
 USDX Parity MVP Functional Specification
 
-Version: 1.13
+Version: 1.14
 Date: 2026-01-31
 Owner: TBD
 
@@ -13,6 +13,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-31 11:22 CET | Assistant | Define phone Leave session semantics: explicit leave clears session, no auto reconnect; rejoin via scan QR or enter code. |
 | 2026-01-31 10:51 CET | Assistant | Specify numeric setting edit via modal numeric keypad (OK opens keypad; validation; apply/cancel) for Scoring Timing and Gameplay. |
 | 2026-01-31 10:48 CET | Assistant | Specify Rename device dialog UI/behavior (keyboard entry, validation, commit/cancel). |
 | 2026-01-31 10:38 CET | Assistant | Clarify join/roster placement: show compact QR+code join widget on Song List; make roster management canonical in Settings > Connect Phones; align Pairing UX section accordingly. |
@@ -803,7 +804,7 @@ Session state is owned by the TV host app.
  - Current assigned role (Singer / Spectator); if Singer, show playerId (P1/P2)
  - Live input level meter
  - Mute toggle: when enabled, the phone MUST continue to stay connected but MUST stream frames as unvoiced (equivalent to `toneValid=false` and no `midiNote`) so the TV scores silence.
- - Leave session action
+ - Leave session action (see below)
 
 **Wireframes (phone app, spec-only interactions)**
 ```text
@@ -843,6 +844,14 @@ Assigned as Singer (during a song)
 | [Leave session]                   |
 +----------------------------------+
 ```
+
+**Leave session UX (normative)**
+- Tapping **Leave session** MUST:
+ - Close the network connection to the TV host (WebSocket).
+ - Return the phone UI to the Join screen.
+ - Clear any cached session endpoint so the user MUST rejoin explicitly (Scan QR or enter code).
+- After leaving, automatic reconnect MUST NOT occur in MVP.
+- Rejoining the same session is done via the Join screen (Scan QR or enter code). The phone SHOULD reuse the same `clientId` so the TV can reclaim identity/assignment per Section 7.4.
 
 **Join rejection UX (normative)**
 - If the TV rejects a join with an `error`, the phone MUST show a blocking error message and return to the Join screen.
@@ -886,6 +895,7 @@ Protocol mismatch
 
 - Gameplay does not pause on disconnect.
 - While disconnected, that player contributes no pitch frames and MUST receive no additional score.
+- Automatic reconnect is NOT supported in MVP: after a disconnect, the phone MUST require explicit user action to rejoin (Scan QR or enter join code on the Join screen).
 - If the same phone reconnects within the same session, it SHOULD reclaim its prior identity using `clientId` (Section 8.2 `hello`).
 - If the phone was assigned as a Singer when it disconnected, it MUST resume that role on reconnect (unless the host has cleared assignments).
 - If the session roster is full and the reconnect cannot be matched to an existing `clientId`, the reconnect MUST be rejected with `code="session_full"`.
