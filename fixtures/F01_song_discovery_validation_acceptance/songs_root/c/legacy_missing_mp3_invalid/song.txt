@@ -1,0 +1,7 @@
+#TITLE:Legacy Missing MP3
+#ARTIST:Fixture
+#AUDIO:audio.ogg
+#BPM:120
+- 0
+: 0 4 60 la
+E

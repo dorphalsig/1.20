@@ -23,6 +23,7 @@ The deterministic fields that a test should assert are listed in:
 Notes:
 - `txtUri` values are relative to the fixture directory for portability.
 - Dynamic fields like `songId`, `modifiedTimeMs`, or absolute SAF URIs are intentionally not asserted.
+- Some cases include extra deterministic fields (`resolvedAudioRel`, `hasVideo`) to assert audio-resolution and missing-optional-asset behavior.
 
 ## Cases included
 
@@ -30,3 +31,8 @@ Notes:
 - `a/invalid_missing_required_header` — missing required `#ARTIST` header (audio exists)
 - `b/invalid_missing_audio` — `#AUDIO:missing.ogg` references a non-existent file
 - `b/invalid_malformed_body` — body has a recognized note token with non-numeric duration
+
+- `c/v1_audio_precedence` — VERSION>=1.0.0 with both `#AUDIO` and `#MP3`; expects `#AUDIO` wins (`resolvedAudioRel=audio.ogg`)
+- `c/legacy_missing_mp3_invalid` — legacy (no VERSION) with `#AUDIO` but missing `#MP3`; expects invalid missing required header
+- `c/legacy_mp3_preferred` — legacy with both `#AUDIO` and `#MP3`; expects `#MP3` chosen (`resolvedAudioRel=audio.mp3`)
+- `c/v1_missing_optional_video` — VERSION>=1.0.0 with missing `#VIDEO` target; expects valid and treated as absent (`hasVideo=false`)

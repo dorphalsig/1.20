@@ -1,0 +1,8 @@
+#TITLE:Legacy MP3 Preferred
+#ARTIST:Fixture
+#AUDIO:audio.ogg
+#MP3:audio.mp3
+#BPM:120
+- 0
+: 0 4 60 la
+E

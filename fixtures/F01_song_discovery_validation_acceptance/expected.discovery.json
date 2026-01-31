@@ -36,6 +36,46 @@
       "invalidLineNumber": 7,
       "artist": "Fixture",
       "title": "Malformed Body"
+    },
+
+    {
+      "songDirRel": "c/v1_audio_precedence",
+      "songTxtRel": "c/v1_audio_precedence/song.txt",
+      "isValid": true,
+      "invalidReasonCode": null,
+      "invalidLineNumber": null,
+      "artist": "Fixture",
+      "title": "V1 Audio Precedence",
+      "resolvedAudioRel": "audio.ogg"
+    },
+    {
+      "songDirRel": "c/legacy_missing_mp3_invalid",
+      "songTxtRel": "c/legacy_missing_mp3_invalid/song.txt",
+      "isValid": false,
+      "invalidReasonCode": "ERROR_CORRUPT_SONG_MISSING_REQUIRED_HEADER",
+      "invalidLineNumber": null,
+      "artist": "Fixture",
+      "title": "Legacy Missing MP3"
+    },
+    {
+      "songDirRel": "c/legacy_mp3_preferred",
+      "songTxtRel": "c/legacy_mp3_preferred/song.txt",
+      "isValid": true,
+      "invalidReasonCode": null,
+      "invalidLineNumber": null,
+      "artist": "Fixture",
+      "title": "Legacy MP3 Preferred",
+      "resolvedAudioRel": "audio.mp3"
+    },
+    {
+      "songDirRel": "c/v1_missing_optional_video",
+      "songTxtRel": "c/v1_missing_optional_video/song.txt",
+      "isValid": true,
+      "invalidReasonCode": null,
+      "invalidLineNumber": null,
+      "artist": "Fixture",
+      "title": "V1 Missing Optional Video",
+      "hasVideo": false
     }
   ]
 }
