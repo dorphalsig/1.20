@@ -1,0 +1,7 @@
+#VERSION:1.0.0
+#TITLE:Missing Artist
+#AUDIO:audio.ogg
+#BPM:120
+- 0
+: 0 4 60 la
+E

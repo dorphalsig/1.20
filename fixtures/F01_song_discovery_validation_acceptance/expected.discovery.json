@@ -1,0 +1,41 @@
+{
+  "rootRel": "songs_root",
+  "songs": [
+    {
+      "songDirRel": "a/valid_minimal",
+      "songTxtRel": "a/valid_minimal/song.txt",
+      "isValid": true,
+      "invalidReasonCode": null,
+      "invalidLineNumber": null,
+      "artist": "Fixture",
+      "title": "Valid Minimal"
+    },
+    {
+      "songDirRel": "a/invalid_missing_required_header",
+      "songTxtRel": "a/invalid_missing_required_header/song.txt",
+      "isValid": false,
+      "invalidReasonCode": "ERROR_CORRUPT_SONG_MISSING_REQUIRED_HEADER",
+      "invalidLineNumber": null,
+      "artist": null,
+      "title": "Missing Artist"
+    },
+    {
+      "songDirRel": "b/invalid_missing_audio",
+      "songTxtRel": "b/invalid_missing_audio/song.txt",
+      "isValid": false,
+      "invalidReasonCode": "ERROR_CORRUPT_SONG_FILE_NOT_FOUND",
+      "invalidLineNumber": 4,
+      "artist": "Fixture",
+      "title": "Missing Audio File"
+    },
+    {
+      "songDirRel": "b/invalid_malformed_body",
+      "songTxtRel": "b/invalid_malformed_body/song.txt",
+      "isValid": false,
+      "invalidReasonCode": "ERROR_CORRUPT_SONG_MALFORMED_BODY",
+      "invalidLineNumber": 7,
+      "artist": "Fixture",
+      "title": "Malformed Body"
+    }
+  ]
+}

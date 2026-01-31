@@ -1,0 +1,8 @@
+#VERSION:1.0.0
+#TITLE:Missing Audio File
+#ARTIST:Fixture
+#AUDIO:missing.ogg
+#BPM:120
+- 0
+: 0 4 60 la
+E
