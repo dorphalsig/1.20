@@ -1,7 +1,7 @@
 Android Karaoke Game
 USDX Parity MVP Functional Specification
 
-Version: 1.10
+Version: 1.11
 Date: 2026-01-31
 Owner: TBD
 
@@ -13,6 +13,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-31 10:38 CET | Assistant | Clarify join/roster placement: show compact QR+code join widget on Song List; make roster management canonical in Settings > Connect Phones; align Pairing UX section accordingly. |
 | 2026-01-31 06:43 CET | Assistant | Add Appendix F fixture guide: repo layout + manifest usage + acceptance inventory F01–F15 with required subcases; bump version/date. |
 
 
@@ -222,7 +223,10 @@ Implementations MAY store additional fields (e.g., genre, year, cover/background
 - **Search** button: opens Search overlay (see Section 3.5).
 
 **Pairing (on landing)**
-- The landing screen MUST display only the session join QR code and short join code (no roster on the landing screen).
+- The landing screen MUST show a compact session join widget: QR code + short join code for the current session endpoint (Section 8.1).
+- The landing screen MUST NOT show a connected-device roster.
+- The join widget SHOULD be placed in the top-right area of the screen to avoid disrupting the song list layout.
+- Device roster management (Rename/Kick/Forget) is available only in Settings -> Connect Phones (Section 10.4.1).
 
 **Empty state**
 - If no songs are indexed, show:
@@ -244,7 +248,8 @@ Implementations MAY store additional fields (e.g., genre, year, cover/background
 ```text
 +--------------------------------------------------------------------------------+
 | ● song selection                                      ultrastar (clone)        |
-|   choose your song                                                             |
+|   choose your song                                                     [  QR ] |
+|                                                                  Code: ABCD    |
 +--------------------------------------------------------------------------------+
 |                                                                                |
 |   [Cover - Prev]        [Cover - Selected]           [Cover - Next]            |
@@ -254,9 +259,6 @@ Implementations MAY store additional fields (e.g., genre, year, cover/background
 |                      |         Title            |                              |
 |                      |                     6/86 |                              |
 |                      +---------------------------+                              |
-|                                                                                |
-|  Pair / Join (landing: only QR + code)                                         |
-|     [  QR  ]     Code: ABCD                                                    |
 |                                                                                |
 +--------------------------------------------------------------------------------+
 | Hints:  OK=Select Song   Search=Filter   Settings=Config   Back=Exit            |
@@ -772,11 +774,14 @@ Session state is owned by the TV host app.
 
 ## 7.2 Pairing UX (TV)
 
-- TV shows QR code and a short join code representing the current session endpoint (Section 8.1).
-- TV shows a roster of connected device names (up to **10**).
-- Join admission (normative):
- - Phones MAY join while the session is **Open** until the roster reaches 10 devices.
- - Additional phones MUST be rejected with an `error` (e.g., `code="session_full"`).
+**Join UI placement (normative)**
+- The TV host MUST display the session join QR code and short join code representing the current session endpoint (Section 8.1).
+- The Song List landing screen (Section 3.4) MUST show a compact join widget (QR + code) and MUST NOT show the connected-device roster.
+- Settings -> Connect Phones (Section 10.4.1) MUST show the join QR/code plus the connected-device roster and management actions.
+
+**Join admission (normative)**
+- Phones MAY join while the session is **Open** until the roster reaches 10 devices.
+- Additional phones MUST be rejected with an `error` (e.g., `code="session_full"`).
 - During **Locked** state, new joins MUST be rejected with an `error` (e.g., `code="session_locked"`).
 
 **Roster actions (normative)**
@@ -785,24 +790,9 @@ Session state is owned by the TV host app.
 - **Forget device**: removes the stored display label for that `clientId` and disconnects the device; a future join is treated as a fresh device with default name.
 - Kick/Forget MUST use a confirm dialog with default focus on Cancel.
 
-**Wireframe (TV pairing info + roster management; spec-only interactions)**
-```text
-+--------------------------------------------------------------------------------+
-| PAIR / JOIN                                                                    |
-+--------------------------------------------------------------------------------+
-| Join this session:                                                             |
-|   [   QR CODE   ]             Code: ABCD                                       |
-|                                                                                |
-| Connected devices (up to 10):                                                  |
-|  > Pixel-7        Connected                                                    |
-|    iPhone-13      Connected                                                    |
-|    ...                                                                         |
-|                                                                                |
-| Actions on selected device:  [Rename] [Kick] [Forget]                         |
-+--------------------------------------------------------------------------------+
-| Hints: OK=Select/Action   Back=Return                                          |
-+--------------------------------------------------------------------------------+
-```
+**Wireframes**
+- Join widget: see Section 3.4 (Song List).
+- Roster management: see Section 10.4.1 (Settings > Connect Phones).
 
 ## 7.3 Pairing UX (Phone)
 
