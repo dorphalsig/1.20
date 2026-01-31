@@ -1,7 +1,7 @@
 Android Karaoke Game
 USDX Parity MVP Functional Specification
 
-Version: 1.12
+Version: 1.13
 Date: 2026-01-31
 Owner: TBD
 
@@ -13,6 +13,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-31 10:51 CET | Assistant | Specify numeric setting edit via modal numeric keypad (OK opens keypad; validation; apply/cancel) for Scoring Timing and Gameplay. |
 | 2026-01-31 10:48 CET | Assistant | Specify Rename device dialog UI/behavior (keyboard entry, validation, commit/cancel). |
 | 2026-01-31 10:38 CET | Assistant | Clarify join/roster placement: show compact QR+code join widget on Song List; make roster management canonical in Settings > Connect Phones; align Pairing UX section accordingly. |
 
@@ -1256,6 +1257,35 @@ Settings is a simple list of items; selecting one opens a sub-screen.
 +--------------------------------------+
 ```
 
+**Numeric setting edit (normative)**
+- For boolean settings, OK MUST toggle the value immediately.
+- For numeric settings, OK MUST open a modal numeric keypad dialog.
+- The numeric keypad dialog MUST:
+ - Show the setting name and current value.
+ - Allow entering digits 0-9.
+ - Provide **Cancel** and **OK** actions.
+ - Cancel (or Back) MUST close the dialog without applying changes.
+ - OK MUST validate input; on success, apply immediately and return to the settings screen.
+ - On validation failure, the dialog MUST remain open and show an error.
+- Default focus MUST be **Cancel**.
+
+**Wireframe (numeric keypad dialog; default focus Cancel)**
+```text
++--------------------------------------+
+| EDIT VALUE                            |
+| Setting: <SettingName>                |
+|                                      |
+| Value: [ 123 ]                        |
+|                                      |
+|  [1] [2] [3]                          |
+|  [4] [5] [6]                          |
+|  [7] [8] [9]                          |
+|  [Del] [0]                            |
+|                                      |
+|  > Cancel     OK                      |
++--------------------------------------+
+```
+
 ### 10.4.1 Settings > Connect Phones
 
 **Purpose**
@@ -1424,6 +1454,11 @@ This is the Add songs workflow.
 - Auto mic delay adjust ON/OFF (and status).
 - These settings affect the TV scoring timeline (Section 9).
 
+**Interaction rules (normative)**
+- Selecting **Manual mic delay** and pressing OK MUST open the numeric keypad dialog (see "Numeric setting edit" in Section 10.4).
+ - The manual mic delay value MUST be an integer number of milliseconds (>= 0).
+- Selecting **Auto mic delay adjust** and pressing OK MUST toggle ON/OFF.
+
 **Wireframe (Scoring Timing)**
 ```text
 +--------------------------------------+
@@ -1441,8 +1476,13 @@ This is the Add songs workflow.
 
 - Line bonus ON/OFF (default ON).
 - Ready countdown before song start: ON/OFF (default ON).
-- Countdown length (seconds): integer 110 (default 3). Countdown ticks at 1 Hz: N, N-1, , 1, then start.
+- Countdown length (seconds): integer 1-10 (default 3). Countdown ticks at 1 Hz: N, N-1, ... , 1, then start.
 - Optional: show pitch bars ON/OFF (visual only).
+
+**Interaction rules (normative)**
+- Selecting **Countdown seconds** and pressing OK MUST open the numeric keypad dialog (see "Numeric setting edit" in Section 10.4).
+ - Validation MUST enforce the range 1-10.
+- Selecting **Line bonus**, **Ready countdown**, or **Show pitch bars** and pressing OK MUST toggle ON/OFF.
 
 **Wireframe (Gameplay)**
 ```text
