@@ -1,0 +1,7 @@
+#VERSION:1.0.0
+#TITLE:Bad BPM
+#ARTIST:Fixture
+#AUDIO:audio.ogg
+#BPM:not_a_number
+#GAP:0
+E

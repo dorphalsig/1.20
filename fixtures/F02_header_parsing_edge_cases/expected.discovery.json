@@ -1,0 +1,140 @@
+{
+  "rootRel": "songs_root",
+  "songs": [
+    {
+      "songDirRel": "a/dup_bpm_last_wins",
+      "songTxtRel": "a/dup_bpm_last_wins/song.txt",
+      "isValid": true,
+      "invalidReasonCode": null,
+      "invalidLineNumber": null,
+      "header": {
+        "title": "Dup BPM",
+        "artist": "Fixture",
+        "version": "1.0.0",
+        "bpmFile": 120.0,
+        "audioResolved": "audio.ogg",
+        "customTagsOrdered": []
+      },
+      "derived": {
+        "previewStartSec": 0.0
+      }
+    },
+    {
+      "songDirRel": "a/unknown_tags_variants",
+      "songTxtRel": "a/unknown_tags_variants/song.txt",
+      "isValid": true,
+      "invalidReasonCode": null,
+      "invalidLineNumber": null,
+      "header": {
+        "title": "Unknown Tags",
+        "artist": "Fixture",
+        "version": "1.0.0",
+        "bpmFile": 120.0,
+        "audioResolved": "audio.ogg",
+        "customTagsOrdered": [
+          {
+            "name": "FOO",
+            "value": "bar"
+          },
+          {
+            "name": "EMPTY",
+            "value": ""
+          },
+          {
+            "name": "",
+            "value": "JUSTTEXT"
+          }
+        ]
+      },
+      "derived": {
+        "previewStartSec": 0.0
+      }
+    },
+    {
+      "songDirRel": "b/invalid_missing_artist",
+      "songTxtRel": "b/invalid_missing_artist/song.txt",
+      "isValid": false,
+      "invalidReasonCode": "ERROR_CORRUPT_SONG_MISSING_REQUIRED_HEADER",
+      "invalidLineNumber": null
+    },
+    {
+      "songDirRel": "b/invalid_malformed_bpm",
+      "songTxtRel": "b/invalid_malformed_bpm/song.txt",
+      "isValid": false,
+      "invalidReasonCode": "ERROR_CORRUPT_SONG_MALFORMED_HEADER",
+      "invalidLineNumber": 5
+    },
+    {
+      "songDirRel": "c/encoding_utf8_forced",
+      "songTxtRel": "c/encoding_utf8_forced/song.txt",
+      "isValid": true,
+      "invalidReasonCode": null,
+      "invalidLineNumber": null,
+      "header": {
+        "title": "Tést ✓ UTF8",
+        "artist": "Fixture",
+        "version": "1.0.0",
+        "bpmFile": 120.0,
+        "audioResolved": "audio.ogg",
+        "customTagsOrdered": []
+      },
+      "derived": {
+        "previewStartSec": 0.0
+      }
+    },
+    {
+      "songDirRel": "c/encoding_legacy_honors",
+      "songTxtRel": "c/encoding_legacy_honors/song.txt",
+      "isValid": true,
+      "invalidReasonCode": null,
+      "invalidLineNumber": null,
+      "header": {
+        "title": "Legacy Encoding",
+        "artist": "Fixture",
+        "version": "0.3.0",
+        "bpmFile": 120.0,
+        "audioResolved": "audio.mp3",
+        "customTagsOrdered": []
+      },
+      "derived": {
+        "previewStartSec": 0.0
+      }
+    },
+    {
+      "songDirRel": "d/preview_from_start",
+      "songTxtRel": "d/preview_from_start/song.txt",
+      "isValid": true,
+      "invalidReasonCode": null,
+      "invalidLineNumber": null,
+      "header": {
+        "title": "Preview From Start",
+        "artist": "Fixture",
+        "version": "1.0.0",
+        "bpmFile": 120.0,
+        "audioResolved": "audio.ogg",
+        "customTagsOrdered": []
+      },
+      "derived": {
+        "previewStartSec": 5.0
+      }
+    },
+    {
+      "songDirRel": "d/preview_from_previewstart",
+      "songTxtRel": "d/preview_from_previewstart/song.txt",
+      "isValid": true,
+      "invalidReasonCode": null,
+      "invalidLineNumber": null,
+      "header": {
+        "title": "Preview From PreviewStart",
+        "artist": "Fixture",
+        "version": "1.0.0",
+        "bpmFile": 120.0,
+        "audioResolved": "audio.ogg",
+        "customTagsOrdered": []
+      },
+      "derived": {
+        "previewStartSec": 12.5
+      }
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+#VERSION:0.3.0
+#ENCODING:UTF-8
+#TITLE:Legacy Encoding
+#ARTIST:Fixture
+#MP3:audio.mp3
+#BPM:120
+#GAP:0
+E

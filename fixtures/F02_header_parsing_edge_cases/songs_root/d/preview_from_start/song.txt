@@ -1,0 +1,8 @@
+#VERSION:1.0.0
+#TITLE:Preview From Start
+#ARTIST:Fixture
+#AUDIO:audio.ogg
+#BPM:120
+#START:5
+#GAP:0
+E
