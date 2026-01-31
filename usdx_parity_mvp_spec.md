@@ -1,7 +1,7 @@
 Android Karaoke Game
 USDX Parity MVP Functional Specification
 
-Version: 1.14
+Version: 1.15
 Date: 2026-01-31
 Owner: TBD
 
@@ -13,6 +13,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-31 11:24 CET | Assistant | Specify Scan QR permission-denied flow and NSD permission route; reuse the same blocking error modal for camera/nearby-wifi denial. |
 | 2026-01-31 11:22 CET | Assistant | Define phone Leave session semantics: explicit leave clears session, no auto reconnect; rejoin via scan QR or enter code. |
 | 2026-01-31 10:51 CET | Assistant | Specify numeric setting edit via modal numeric keypad (OK opens keypad; validation; apply/cancel) for Scoring Timing and Gameplay. |
 | 2026-01-31 10:48 CET | Assistant | Specify Rename device dialog UI/behavior (keyboard entry, validation, commit/cancel). |
@@ -842,6 +843,40 @@ Assigned as Singer (during a song)
 | Mute: [OFF]                       |
 |                                  |
 | [Leave session]                   |
++----------------------------------+
+```
+
+**Scan QR UX (normative)**
+- Tapping **Scan QR** MUST open the camera-based QR scanner.
+- If camera permission is not granted, the phone MUST request it.
+- If camera permission is denied (including "Don't ask again"), the phone MUST:
+ - Return to the Join screen.
+ - Show a blocking error modal (see below).
+
+**LAN discovery permission UX (normative)**
+- If LAN discovery is used (NSD/mDNS), the phone MUST request the required Android permission(s) to perform discovery.
+- If the required permission(s) are denied (including "Don't ask again"), the phone MUST:
+ - Return to the Join screen.
+ - Show the same blocking error modal as camera-permission denial.
+- The error modal MUST provide a deterministic "how to fix" route:
+ - User is instructed to open Android Settings -> Apps -> (this app) -> Permissions and enable the missing permission(s).
+
+**Wireframe (phone permission denied; shared modal)**
+```text
++----------------------------------+
+| ERROR                             |
++----------------------------------+
+| Permission required.              |
+|                                  |
+| Enable:                           |
+|  - Camera (to scan QR)            |
+|  - Nearby devices / Wi-Fi scan    |
+|    (to discover the TV on LAN)    |
+|                                  |
+| Open Android Settings -> Apps ->  |
+| (this app) -> Permissions         |
+|                                  |
+| [OK]                              |
 +----------------------------------+
 ```
 
