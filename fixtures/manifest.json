@@ -205,9 +205,9 @@
       "id": "F02",
       "name": "header_parsing_edge_cases",
       "tags": ["parser"],
-      "status": "planned",
+      "status": "implemented",
       "paths": {
-        "fixtureDir": null
+        "fixtureDir": "fixtures/F02_header_parsing_edge_cases"
       },
       "covers": ["4.1", "4.2", "Appendix A", "Appendix C"]
     },
