@@ -1,7 +1,7 @@
 Android Karaoke Game
 USDX Parity MVP Functional Specification
 
-Version: 1.15
+Version: 1.16
 Date: 2026-01-31
 Owner: TBD
 
@@ -13,6 +13,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-31 11:25 CET | Assistant | Clarify join resolution: QR encodes full WS endpoint URL including token; join code is the same token (formatted for manual entry); NSD is used for LAN session discovery (especially for manual-code join). |
 | 2026-01-31 11:24 CET | Assistant | Specify Scan QR permission-denied flow and NSD permission route; reuse the same blocking error modal for camera/nearby-wifi denial. |
 | 2026-01-31 11:22 CET | Assistant | Define phone Leave session semantics: explicit leave clears session, no auto reconnect; rejoin via scan QR or enter code. |
 | 2026-01-31 10:51 CET | Assistant | Specify numeric setting edit via modal numeric keypad (OK opens keypad; validation; apply/cancel) for Scoring Timing and Gameplay. |
@@ -226,7 +227,8 @@ Implementations MAY store additional fields (e.g., genre, year, cover/background
 - **Search** button: opens Search overlay (see Section 3.5).
 
 **Pairing (on landing)**
-- The landing screen MUST show a compact session join widget: QR code + short join code for the current session endpoint (Section 8.1).
+- The landing screen MUST show a compact session join widget: QR code + join code (token) for the current session endpoint (Section 8.1).
+- The QR payload MUST encode the full WebSocket endpoint URL (including the `token` query parameter), so the phone can join without relying on LAN discovery.
 - The landing screen MUST NOT show a connected-device roster.
 - The join widget SHOULD be placed in the top-right area of the screen to avoid disrupting the song list layout.
 - Device roster management (Rename/Kick/Forget) is available only in Settings -> Connect Phones (Section 10.4.1).
@@ -778,7 +780,8 @@ Session state is owned by the TV host app.
 ## 7.2 Pairing UX (TV)
 
 **Join UI placement (normative)**
-- The TV host MUST display the session join QR code and short join code representing the current session endpoint (Section 8.1).
+- The TV host MUST display the session join QR code and join code (token) representing the current session endpoint (Section 8.1).
+- The QR payload MUST encode the full WebSocket endpoint URL (including the `token` query parameter). It MUST NOT be an NSD/service-discovery identifier.
 - The Song List landing screen (Section 3.4) MUST show a compact join widget (QR + code) and MUST NOT show the connected-device roster.
 - Settings -> Connect Phones (Section 10.4.1) MUST show the join QR/code plus the connected-device roster and management actions.
 
@@ -852,6 +855,27 @@ Assigned as Singer (during a song)
 - If camera permission is denied (including "Don't ask again"), the phone MUST:
  - Return to the Join screen.
  - Show a blocking error modal (see below).
+
+**Join resolution (normative)**
+- The QR payload MUST encode the full WebSocket endpoint URL as specified in Section 8.1, including the `token` query parameter.
+- On successful QR scan, the phone MUST parse the URL and attempt to connect directly to that endpoint.
+- After a successful QR scan, the phone SHOULD additionally start LAN discovery (NSD/mDNS) to detect available TV sessions on the current Wi-Fi network. This is used to:
+ - Confirm the user is on the correct LAN.
+ - Display a friendly TV/session name if discovered.
+- When the user enters the join code manually, the phone MUST use LAN discovery (NSD/mDNS) to locate a TV session endpoint on the LAN.
+- If multiple TV sessions are discovered, the phone MUST prompt the user to select which session to join.
+
+**Wireframe (phone select TV session; used when multiple sessions are discovered)**
+```text
++----------------------------------+
+| SELECT TV SESSION                 |
++----------------------------------+
+|  > Living Room TV                 |
+|    Bedroom TV                     |
+|                                  |
+| [Back]                            |
++----------------------------------+
+```
 
 **LAN discovery permission UX (normative)**
 - If LAN discovery is used (NSD/mDNS), the phone MUST request the required Android permission(s) to perform discovery.
@@ -943,8 +967,11 @@ Protocol mismatch
 
 - Transport MUST be **WebSocket** over the local network (same subnet WiFi).
 - TV host exposes: `ws://<host-ip>:<port>/?token=<sessionToken>`.
-- **Session token**
- - Cryptographically random string, minimum 128 bits entropy (e.g., 22+ chars base64url).
+- **Session token / join code (normative)**
+ - Cryptographically random token, minimum 128 bits entropy.
+ - The same token MUST be shown to the user as the join code and MUST be the value of the `token` query parameter.
+ - The join code MUST be human-enterable: implementations SHOULD use a case-insensitive alphabet and MAY display the code in groups (e.g., `ABCD-EFGH-IJKL-...`).
+ - When the user types the join code, the phone MUST normalize it by removing spaces/hyphens and applying case-insensitive comparison.
  - Generated per Session start; invalidated when Session ends.
  - Reuse across sessions is NOT allowed.
 - Host MUST reject connections with missing/incorrect token and send an `error` before closing.
