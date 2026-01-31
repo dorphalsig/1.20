@@ -1,7 +1,7 @@
 Android Karaoke Game
 USDX Parity MVP Functional Specification
 
-Version: 1.16
+Version: 1.17
 Date: 2026-01-31
 Owner: TBD
 
@@ -13,6 +13,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
+| 2026-01-31 11:36 CET | Assistant | Remove non-MVP Debug entry from Settings root (no dead-end screen). |
 | 2026-01-31 11:25 CET | Assistant | Clarify join resolution: QR encodes full WS endpoint URL including token; join code is the same token (formatted for manual entry); NSD is used for LAN session discovery (especially for manual-code join). |
 | 2026-01-31 11:24 CET | Assistant | Specify Scan QR permission-denied flow and NSD permission route; reuse the same blocking error modal for camera/nearby-wifi denial. |
 | 2026-01-31 11:22 CET | Assistant | Define phone Leave session semantics: explicit leave clears session, no auto reconnect; rejoin via scan QR or enter code. |
@@ -1311,7 +1312,6 @@ Settings is a simple list of items; selecting one opens a sub-screen.
 - Scoring Timing
 - Gameplay
 - Video
-- Debug (optional)
 
 **Wireframe (TV Settings root)**
 ```text
@@ -1323,7 +1323,6 @@ Settings is a simple list of items; selecting one opens a sub-screen.
 |    Scoring Timing                     |
 |    Gameplay                           |
 |    Video                              |
-|    Debug (optional)                   |
 +--------------------------------------+
 | Hints: OK=Open   Back=Return          |
 +--------------------------------------+
