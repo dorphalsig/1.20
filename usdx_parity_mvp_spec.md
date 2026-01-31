@@ -1,10 +1,8 @@
 Android Karaoke Game
 USDX Parity MVP Functional Specification
 
-Version: 1.9
-
-Date: 2026-01-30
-
+Version: 1.10
+Date: 2026-01-31
 Owner: TBD
 
 Status: Draft
@@ -15,10 +13,7 @@ Status: Draft
 
 | Timestamp | Author | Changes |
 | --- | --- | --- |
-| 2026-01-30 23:38 CET | Assistant | Align audio header acceptance with USDX: AUDIO introduced in >=1.0.0 and MP3 required for legacy; MP3 remains fallback when AUDIO absent. |
-| 2026-01-30 22:26 CET | Assistant | Replace Appendix A/B placeholders with USDX-aligned tag/token reference + protocol JSON schemas; reconcile ping/pong field names. |
-| 2026-01-30 22:09 CET | Assistant | Add Appendix E worked numeric examples (timing + scoring) to make acceptance fixtures deterministic without audio/DSP. |
-| 2026-01-30 21:12 CET | Assistant | Add a normative parsed-song in-memory model (Appendix C) plus a JSON fixture serialization (Appendix D) to enable portable acceptance/unit fixtures. |
+| 2026-01-31 06:43 CET | Assistant | Add Appendix F fixture guide: repo layout + manifest usage + acceptance inventory F01–F15 with required subcases; bump version/date. |
 
 
 
@@ -89,6 +84,7 @@ Conventions:
 - Appendix C: Parsed Song Model (Normative)
 - Appendix D: ParsedSongModel Fixture Serialization (Normative)
 - Appendix E: Worked Examples (Normative for fixtures)
+- Appendix F: Fixtures Guide and Acceptance Inventory
 
 # 1. Product Contract
 
@@ -2271,3 +2267,359 @@ Fixture directory example: `E4_score_linebonus_perfect/`
   - `ScoreTotalInt`
 
 `pitchFrames.jsonl` is OPTIONAL for E.4 if the harness can inject per-beat hit/miss booleans. If the fixture uses the full scoring pipeline, provide `pitchFrames.jsonl` with `toneValid=true` and `midiNote` matching the target tone for each scoring beat.
+
+# Appendix F: Fixtures Guide and Acceptance Inventory
+
+This appendix documents the fixture **conventions** for this repository: intended on-disk layout, the fixture manifest, and the acceptance fixture inventory (F01–F15) including required subcases and expected files.
+
+## F.1 Scope and goals
+
+Fixtures are intended to be:
+
+- **Deterministic**: expected outputs are asserted via JSON files; dynamic values (timestamps, generated IDs, absolute URIs) are not asserted.
+- **Portable**: all paths are relative within the repository.
+- **Small**: keep audio files as empty stubs unless the test requires real media; prefer minimal charts.
+- **Reusable**: the same fixtures should support both acceptance tests and unit tests.
+
+## F.2 Repository layout (convention for this repo)
+
+All fixture content is located under the repo directory `fixtures/`. The **manifest** (`fixtures/manifest.json`) is the authoritative index for which fixtures exist and where their files live.
+
+Directory conventions (a test harness MUST follow the manifest; directories MAY be absent until fixtures are authored):
+
+- `fixtures/manifest.json` — the fixture manifest (Section F.3).
+- `fixtures/song_txt_variants/` — single-song TXT parser variants (S01–S17). Each variant is a small folder typically containing `song.txt` and a media stub file referenced by the song header.
+- `fixtures/Fxx_*/` — acceptance fixtures (F01–F15). Each `Fxx_*` fixture is a directory; some fixtures include an internal `songs_root/` tree for recursive discovery.
+- `fixtures/E*_*/` — optional worked-example fixtures derived from Appendix E (e.g., `E4_score_linebonus_perfect/`).
+
+Note: The UltraStar Deluxe (USDX) rules/spec do not mandate a repo layout. This layout is a practical convention used by this repository to keep fixtures discoverable and controlled.
+
+## F.3 Fixture manifest (`fixtures/manifest.json`)
+
+The manifest is a **machine-readable index** used by test harnesses to locate fixtures and map them back to spec coverage.
+
+At a high level, it contains:
+
+- `manifestVersion`: manifest schema version.
+- `specVersion`: the spec version the manifest was authored against.
+- `root`: repository-relative root for fixture paths (typically `fixtures`).
+- `fixtures[]`: entries with:
+  - `id`: stable fixture ID (e.g., `S01`, `F08`).
+  - `name`: short slug.
+  - `tags`: categories like `parser`, `timing`, `scoring`, `protocol`.
+  - `status`: `implemented` or `planned`.
+  - `paths`: pointers to relevant files (either specific file paths such as `songTxt`, or a `fixtureDir` for multi-file fixtures).
+  - `covers`: list of spec section references (e.g., `4.2`, `Appendix D`).
+
+Test harness guidance:
+
+- Tests should discover fixtures via the manifest rather than hard-coding directory paths.
+- Tests may filter by `tags` and/or `status`.
+- Tests should treat `covers` as an informational mapping (coverage reporting), not as runtime logic.
+
+## F.4 Fixture directory types (what files to expect)
+
+### F.4.1 Parse-only fixture (TXT parsing)
+
+A parse-only fixture is a directory containing at minimum:
+
+- `song.txt`
+- `expected.parsedSong.json`
+
+This validates TXT parsing into the Parsed Song Model (Appendix C).
+
+### F.4.2 Scoring fixture (timing + scoring)
+
+A scoring fixture is a parse-only fixture plus deterministic scoring inputs/outputs:
+
+- `pitchFrames.jsonl` (recommended for acceptance fixtures)
+  - one JSON object per line
+  - timestamped via `tCaptureMs`
+  - includes at least the protocol-required fields: `seq`, `tCaptureMs`, `toneValid`, `midiNote`
+- `expected.score.json`
+
+This validates beat/time conversion (Section 5) and scoring (Section 6). For acceptance, prefer `pitchFrames.jsonl` over synthetic hit/miss injection because it also covers jitter/clock mapping behavior.
+
+### F.4.3 Discovery/index fixture (library scan)
+
+A discovery/index fixture validates **recursive discovery** plus **accept/reject validation** across **multiple songs** (Section 3.2, 4.3).
+
+A typical fixture directory contains:
+
+- `songs_root/` — a directory tree with multiple song folders and their `.txt` files. Each song folder SHOULD be laid out like a real song folder (i.e., `song.txt` plus any referenced media files).
+- `expected.discovery.json` — an expected discovery result file **defined by this repository** (not a USDX file format).
+
+`expected.discovery.json` MUST be deterministic and must only assert stable fields.
+
+Minimum schema (repo convention):
+
+```json
+{
+  "rootRel": "songs_root",
+  "songs": [
+    {
+      "songDirRel": "a/valid_minimal",
+      "songTxtRel": "a/valid_minimal/song.txt",
+      "isValid": true,
+      "invalidReasonCode": null,
+      "invalidLineNumber": null
+    }
+  ]
+}
+```
+
+Field semantics:
+
+- `songDirRel`: song folder path relative to `songs_root/`.
+- `songTxtRel`: path to the `.txt` file relative to `songs_root/`.
+- `isValid`: `true` iff the song is accepted by the validation rules.
+- `invalidReasonCode`: stable string identifier for the rejection reason when `isValid=false` (see Section 4.3 diagnostics rules). `null` when valid.
+- `invalidLineNumber`: 1-based line number when the rejection is attributable to a specific line in `song.txt`; otherwise `null`.
+
+Tests MAY additionally assert other deterministic index fields (e.g., `artist`, `title`, `version`, `hasVideo`) as needed, but should not assert dynamic values.
+
+
+### F.4.4 Protocol/session fixture (control messages)
+
+Some acceptance fixtures require **control-message transcripts** (e.g., pairing, assignment, reconnect reclaim; Section 8).
+
+A typical fixture directory contains:
+
+- `transcript.jsonl` — a message transcript file **defined by this repository** (not a USDX file format)
+- `expected.session.json` — expected outcomes **defined by this repository**
+
+#### `transcript.jsonl` (repo convention)
+
+- UTF-8 text file
+- one JSON object per line
+- each line represents a single protocol message observed or injected
+
+Minimum schema (repo convention):
+
+```json
+{
+  "direction": "phone_to_tv",
+  "message": { "type": "hello", "clientId": "..." }
+}
+```
+
+Field semantics:
+
+- `direction`: `phone_to_tv` or `tv_to_phone`.
+- `message`: a JSON object that MUST conform to the relevant protocol message schema from Section 8.
+
+Tests MAY include optional fields for ordering/debugging (e.g., `tLocalMs`, `seq`), but they must not be required for correctness unless the fixture explicitly tests ordering.
+
+#### `expected.session.json` (repo convention)
+
+This file asserts only deterministic outcomes. Minimum schema:
+
+```json
+{
+  "accepted": true,
+  "finalAssignments": [
+    { "clientId": "...", "singerSlot": 0 }
+  ],
+  "reclaimed": [
+    { "clientId": "...", "reclaimedSingerSlot": 0 }
+  ],
+  "rejected": [
+    { "clientId": "...", "reason": "..." }
+  ]
+}
+```
+
+The `reason` strings must be stable identifiers as defined by the implementation/spec rules for the corresponding scenario.
+
+
+## F.5 Acceptance fixture inventory (F01–F15)
+
+Each acceptance fixture ID defines a scenario to be covered. Implementations should keep these fixtures small and deterministic.
+
+### F01 — Song discovery + validation acceptance
+
+Verifies:
+
+- recursive `.txt` discovery under a configured root (Section 3.2)
+- accept/reject validation rules (Section 3.2, 4.3)
+- invalidation diagnostics include a stable `invalidReasonCode` and, when applicable, `invalidLineNumber` (Section 4.3)
+
+Inputs (repo convention):
+
+- `songs_root/` directory tree containing a mix of valid and invalid songs
+- `expected.discovery.json` describing per-song deterministic validity/diagnostics
+
+Required subcases (minimum):
+
+- valid song with existing audio file
+- invalid: missing required header tag (e.g., `#ARTIST`)
+- invalid: missing required audio file referenced by `#AUDIO`/`#MP3`
+- **Audio resolution subcases**:
+  - `>= 1.0.0`: both `#AUDIO` and `#MP3` present → `#AUDIO` takes precedence
+  - legacy `< 1.0.0`: `#MP3` required; `#AUDIO` ignored for resolution
+- **Optional asset subcase**: missing optional `#VIDEO`/`#COVER`/`#BACKGROUND` is non-fatal (warn/ignore)
+
+### F02 — Header parsing edge cases
+
+Verifies:
+
+- duplicate tags: last-wins (Section 4.2)
+- unknown tags preserved (custom tags) and/or ignored per rules (Section 4.2)
+- malformed required tags invalidate (Section 4.3)
+
+Required subcases:
+
+- duplicates (e.g., multiple `#BPM`): last-wins
+- unknown tags with and without `:`
+- required-tag failures (missing required field; malformed numeric)
+- **Encoding subcase**: `>= 1.0.0` UTF-8 forced; legacy honors `#ENCODING` (Section 4.2)
+- **Preview start subcase**: `previewStartSec` computed from `#PREVIEWSTART` else `#START` else 0 (Section 3.4, 10.2)
+
+### F03 — Body grammar: token recognition + invalidation rules
+
+Verifies:
+
+- unknown tokens are ignored with a warning; recognized tokens with numeric parse failures invalidate (Section 4.2–4.3)
+- duration=0 note is parsed as freestyle (Appendix A)
+
+Required subcases:
+
+- unknown token line
+- malformed numeric fields on a recognized note token
+- duration=0 note → freestyle note
+- **Freestyle scoring subcase**: freestyle yields no pitch-based scoring (Section 6.2)
+
+### F04 — Duet parsing: P1/P2 track routing
+
+Verifies:
+
+- duet detection and track routing via `P1`/`P2` sections (Section 4.2)
+- invalid `P` marker rejection (Section 4.3)
+
+Required subcases:
+
+- valid duet with interleaved P1/P2 sections and lyrics
+- invalid marker (e.g., `P3`) rejected
+
+### F05 — Legacy RELATIVE mode semantics (<1.0.0)
+
+Verifies:
+
+- RELATIVE mode offsets applied correctly per track (Section 4.2)
+- BPM change behavior uses Rel[0] in relative mode (Section 5.2)
+
+Inputs:
+
+- legacy `song.txt` with `RELATIVE:YES`, `-` lines, and `B` BPM lines
+
+### F06 — Beat/time conversion: static BPM
+
+Verifies:
+
+- `lyricsTimeSec ↔ beat` conversion formulas and `CurrentBeat/CurrentBeatD` behavior (Section 5.1–5.2)
+
+Inputs:
+
+- minimal `song.txt` with BPM/GAP/NOTESGAP/micDelay as needed
+- `expected.score.json` or a purpose-specific expected-values file containing expected beat values for sample times
+
+### F07 — Beat/time conversion: variable BPM with clamp
+
+Verifies:
+
+- segment-walk conversion across `B` BPM changes (Section 5.2)
+- clamp behavior for `tSec <= 0` in variable BPM case (Section 5.2)
+
+### F08 — Scoring beat stepping correctness (interval semantics)
+
+Verifies:
+
+- evaluate beats in `(oldBeatD, currentBeatD]` semantics; note active window `start <= b < end` (Section 6.1–6.2)
+
+Inputs:
+
+- scoring fixture with `pitchFrames.jsonl` and `expected.score.json` containing per-step expectations
+
+### F09 — Pitch tolerance + octave normalization (Normal/Golden only)
+
+Verifies:
+
+- tolerance ranges per difficulty (Section 6.3)
+- octave normalization loops by ±12 (Section 6.4)
+
+Inputs:
+
+- scoring fixture whose frames force normalization cases (e.g., detected ±12, ±24)
+
+### F10 — Rap scoring: presence-only gated by toneValid
+
+Verifies:
+
+- rap ignores pitch difference but still requires `toneValid=true` (Section 6.2)
+
+Inputs:
+
+- scoring fixture with rap notes and frames toggling `toneValid` while `midiNote` varies
+
+### F11 — Line bonus + rounding rules
+
+Verifies:
+
+- normalization to 10,000; line bonus pool distribution; tens rounding and golden opposite rounding rule (Section 6.5–6.6; Appendix E)
+
+Inputs:
+
+- minimal chart with ≥2 lines
+- `expected.score.json` with intermediate values and final totals
+
+### F12 — Pitch stream message validation + semantics
+
+Verifies:
+
+- required fields for pitch frames (Section 8.3; Appendix D)
+- dropping invalid frames (seq decreases, `tCaptureMs` regression)
+- silence represented by `toneValid=false` (and `midiNote=null`)
+
+Inputs:
+
+- `pitchFrames.jsonl` containing valid frames plus deliberate invalid regressions
+
+### F13 — Jitter buffer selection + staleness rule
+
+Verifies:
+
+- choose most recent frame `<= scoringTime`
+- staleness cutoff forces `toneValid=false` (Section 9)
+
+Inputs:
+
+- timestamped `pitchFrames.jsonl` around scoring instants and one stale case
+
+### F14 — Clock sync NTP-lite (offset computation + best-of-N)
+
+Verifies:
+
+- RTT/offset math
+- discard invalid RTT
+- choose smallest RTT from last N and apply offset mapping (Section 9)
+
+Inputs (repo convention):
+
+- `transcript.jsonl` (or `clock_sync_samples.json`) containing ping/pong tuples
+- expected computed `clockOffsetMs` values in an expected-output JSON
+
+### F15 — Session lifecycle: hello/assignSinger + reconnect reclaim
+
+Verifies:
+
+- reconnect reclaim via stable `clientId` (Section 7.4)
+- role resumption; rejection behavior when session is full and cannot match (Section 7.1–7.4)
+
+Inputs (repo convention):
+
+- `transcript.jsonl` of control messages (hello, assignSinger, disconnect, reconnect)
+- expected outcome JSON describing assigned slots and accept/reject decisions
+
+### Notes on subcases
+
+Subcases listed above are requirements within the corresponding fixture ID. They should be implemented as small additional variants inside the same fixture directory (e.g., additional songs in `songs_root/` for F01, or additional minimal charts/frames for scoring fixtures) rather than adding new top-level fixture IDs.
