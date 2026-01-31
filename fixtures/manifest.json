@@ -225,9 +225,9 @@
       "id": "F04",
       "name": "duet_parsing_track_routing",
       "tags": ["parser"],
-      "status": "planned",
+      "status": "implemented",
       "paths": {
-        "fixtureDir": null
+        "fixtureDir": "fixtures/F04_duet_parsing_track_routing"
       },
       "covers": ["4.2", "4.3", "Appendix A", "Appendix C"]
     },

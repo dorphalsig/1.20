@@ -1,0 +1,19 @@
+{
+  "rootRel": "songs_root",
+  "songs": [
+    {
+      "songDirRel": "a/valid_duet_interleaved",
+      "songTxtRel": "a/valid_duet_interleaved/song.txt",
+      "isValid": true,
+      "invalidReasonCode": null,
+      "invalidLineNumber": null
+    },
+    {
+      "songDirRel": "b/invalid_duet_marker_p3",
+      "songTxtRel": "b/invalid_duet_marker_p3/song.txt",
+      "isValid": false,
+      "invalidReasonCode": "ERROR_CORRUPT_SONG_INVALID_DUET_MARKER",
+      "invalidLineNumber": 6
+    }
+  ]
+}
