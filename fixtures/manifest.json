@@ -214,10 +214,10 @@
     {
       "id": "F03",
       "name": "body_grammar_token_recognition_invalidation",
-      "tags": ["parser"],
-      "status": "planned",
+      "tags": ["parser", "scoring"],
+      "status": "implemented",
       "paths": {
-        "fixtureDir": null
+        "fixtureDir": "fixtures/F03_body_grammar_token_recognition"
       },
       "covers": ["4.2", "4.3", "Appendix A"]
     },
