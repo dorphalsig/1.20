@@ -19,6 +19,7 @@ class PyinProcessor {
   final int hopSize;
 
   final List<int> _samples = <int>[];
+  int _start = 0;
   int? _carry;
   StreamSink<int>? _sink;
 }
@@ -53,9 +54,12 @@ Future<void> pushPcmTask({
     proc._sink?.add(255);
     return;
   }
-  if (proc._samples.length < proc.frameSize) return;
-  while (proc._samples.length >= proc.frameSize) {
-    final frame = proc._samples.sublist(0, proc.frameSize);
+  if (proc._samples.length - proc._start < proc.frameSize) return;
+  while (proc._samples.length - proc._start >= proc.frameSize) {
+    final frame = proc._samples.sublist(
+      proc._start,
+      proc._start + proc.frameSize,
+    );
     final hz = _hz(frame, proc.sampleRateHz);
     if (hz != null) {
       final midi = (69 + 12 * (math.log(hz / 440.0) / math.ln2)).round().clamp(0, 127);
@@ -63,8 +67,13 @@ Future<void> pushPcmTask({
     } else {
       proc._sink?.add(255);
     }
-    final drop = math.min(proc.hopSize, proc._samples.length);
-    proc._samples.removeRange(0, drop);
+    final available = proc._samples.length - proc._start;
+    final drop = math.min(proc.hopSize, available);
+    proc._start += drop;
+    if (proc._start > 8192) {
+      proc._samples.removeRange(0, proc._start);
+      proc._start = 0;
+    }
   }
 }
 
