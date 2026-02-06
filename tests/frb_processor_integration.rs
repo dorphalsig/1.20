@@ -1,4 +1,4 @@
-use pyin_rs::{new_processor, push_and_get_midi};
+use pyin_rs::{new_processor, pcm_fixtures::ensure_pcm_fixtures, push_and_get_midi};
 use std::fs;
 
 const CHUNK_PATTERN: [usize; 7] = [511, 1023, 2048, 333, 4097, 777, 1500];
@@ -31,6 +31,7 @@ fn mode(values: &[u16]) -> Option<u16> {
 
 #[test]
 fn pcm_fixtures_expected_modes() {
+    ensure_pcm_fixtures().expect("ensure pcm fixtures");
     let fixtures = [
         ("integration_test/assets/pcm/a3_220_pcm16le_mono.pcm", 57),
         ("integration_test/assets/pcm/a4_440_pcm16le_mono.pcm", 69),

@@ -9,6 +9,7 @@ mod frb;
 mod hmm;
 mod midi;
 mod pcm;
+pub mod pcm_fixtures;
 mod pyin_stage1;
 mod viterbi;
 mod yin;
