@@ -11,6 +11,8 @@ pub struct ViterbiTracker {
     backpointers: Vec<Vec<usize>>,
     prev_scores: Vec<f32>,
     frames: usize,
+    buffer_curr: Vec<f32>,
+    buffer_back: Vec<usize>,
 }
 
 impl ViterbiTracker {
@@ -21,13 +23,21 @@ impl ViterbiTracker {
             backpointers: Vec::new(),
             prev_scores: vec![f32::NEG_INFINITY; num_states],
             frames: 0,
+            buffer_curr: vec![f32::NEG_INFINITY; num_states],
+            buffer_back: vec![0; num_states],
         }
     }
 
     pub fn push(&mut self, obs: &ObservationFrame) {
         let num_states = NUM_BINS * 2;
-        let mut curr = vec![f32::NEG_INFINITY; num_states];
-        let mut back = vec![0; num_states];
+        if self.buffer_curr.len() != num_states {
+            self.buffer_curr.resize(num_states, f32::NEG_INFINITY);
+        }
+        if self.buffer_back.len() != num_states {
+            self.buffer_back.resize(num_states, 0);
+        }
+        self.buffer_curr.fill(f32::NEG_INFINITY);
+        self.buffer_back.fill(0);
 
         if self.frames == 0 {
             let log_init = (1.0 / NUM_BINS as f32).ln();
@@ -70,14 +80,14 @@ impl ViterbiTracker {
                         }
                     }
                     let idx = state_index(next_bin, next_voiced);
-                    curr[idx] = best_prev + obs_log;
-                    back[idx] = best_state;
+                    self.buffer_curr[idx] = best_prev + obs_log;
+                    self.buffer_back[idx] = best_state;
                 }
             }
-            self.prev_scores = curr;
+            std::mem::swap(&mut self.prev_scores, &mut self.buffer_curr);
         }
 
-        self.backpointers.push(back);
+        self.backpointers.push(self.buffer_back.clone());
         self.frames += 1;
     }
 
@@ -107,6 +117,18 @@ impl ViterbiTracker {
         rev
     }
 
+    pub fn prune(&mut self, count: usize) {
+        if count == 0 {
+            return;
+        }
+        let prune = count.min(self.backpointers.len());
+        if prune == 0 {
+            return;
+        }
+        self.backpointers.drain(0..prune);
+        self.frames = self.frames.saturating_sub(prune);
+    }
+
     pub fn best_path(&self) -> Vec<HmmState> {
         self.best_suffix_from(0)
     }
@@ -131,10 +153,7 @@ fn state_from_index(idx: usize) -> HmmState {
             voiced: true,
         }
     } else {
-        HmmState {
-            bin: idx,
-            voiced: false,
-        }
+        HmmState { bin: idx, voiced: false }
     }
 }
 

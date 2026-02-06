@@ -133,7 +133,8 @@ pub fn difference_function_inplace(
         let sum_head = scratch.prefix_sq[n - tau];
         let sum_tail = scratch.prefix_sq[n] - scratch.prefix_sq[tau];
         let autocorr = scratch.fft_buffer[tau].re * scale;
-        diff[tau] = sum_head + sum_tail - 2.0 * autocorr;
+        let denom = (n - tau) as f32;
+        diff[tau] = (sum_head + sum_tail - 2.0 * autocorr) / denom;
     }
 
     needed

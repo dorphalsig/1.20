@@ -1,4 +1,5 @@
 use crate::{PcmFormat, Pyin, PyinConfig};
+use flutter_rust_bridge::StreamSink;
 use std::collections::VecDeque;
 use std::sync::Once;
 
@@ -84,14 +85,72 @@ pub fn new_processor(sample_rate_hz: u32, window_ms: u32, hop_ms: u32) -> PyinPr
     PyinProcessor::new(sample_rate_hz, window_ms, hop_ms)
 }
 
+pub fn process_stream(
+    proc: &mut PyinProcessor,
+    pcm16le_bytes: Vec<u8>,
+    sink: StreamSink<u16>,
+) {
+    let run = || {
+        if proc.invalid_config || proc.pyin.is_none() {
+            return;
+        }
+
+        parse_pcm16le_bytes(proc, &pcm16le_bytes);
+
+        if proc.sample_queue.len() < proc.frame_size_samples {
+            return;
+        }
+
+        while proc.sample_queue.len() >= proc.frame_size_samples {
+            for (idx, sample) in proc
+                .sample_queue
+                .iter()
+                .take(proc.frame_size_samples)
+                .enumerate()
+            {
+                proc.frame_buf[idx] = *sample;
+            }
+
+            let mut hop_bytes = Vec::with_capacity(proc.hop_size_samples * 2);
+            for sample in proc.sample_queue.iter().take(proc.hop_size_samples) {
+                hop_bytes.extend_from_slice(&sample.to_le_bytes());
+            }
+
+            if let Some(pyin) = proc.pyin.as_mut() {
+                match pyin.push_bytes(&hop_bytes) {
+                    Ok(frames) => {
+                        for frame in frames {
+                            if let Some(note) = frame.midi_note {
+                                if let Err(err) = sink.add(note as u16) {
+                                    log::error!("failed to emit midi note: {:?}", err);
+                                }
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        log::error!("pYIN push_bytes failed: {:?}", err);
+                        return;
+                    }
+                }
+            }
+
+            for _ in 0..proc.hop_size_samples.min(proc.sample_queue.len()) {
+                proc.sample_queue.pop_front();
+            }
+        }
+    };
+
+    if std::panic::catch_unwind(std::panic::AssertUnwindSafe(run)).is_err() {
+        log::error!("process_stream panicked");
+    }
+}
+
 pub fn push_and_get_midi(proc: &mut PyinProcessor, pcm16le_bytes: Vec<u8>) -> u16 {
     let run = || -> u16 {
         if proc.invalid_config || proc.pyin.is_none() {
             return UNVOICED_MIDI;
         }
 
-        // Keep parsed mono samples in a deque to avoid O(n) front shifts while
-        // advancing by hop size across calls.
         parse_pcm16le_bytes(proc, &pcm16le_bytes);
 
         if proc.sample_queue.len() < proc.frame_size_samples {
@@ -110,7 +169,6 @@ pub fn push_and_get_midi(proc: &mut PyinProcessor, pcm16le_bytes: Vec<u8>) -> u1
                 proc.frame_buf[idx] = *sample;
             }
 
-            // Feed exactly one hop worth of new data into the existing pYIN stream engine.
             let mut hop_bytes = Vec::with_capacity(proc.hop_size_samples * 2);
             for sample in proc.sample_queue.iter().take(proc.hop_size_samples) {
                 hop_bytes.extend_from_slice(&sample.to_le_bytes());

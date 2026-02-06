@@ -20,6 +20,8 @@ use pyin_stage1::{process_frame_with_scratch, Stage1CandidateFrame, Stage1Config
 use viterbi::ViterbiTracker;
 use yin::YinScratch;
 
+const MAX_HISTORY_FRAMES: usize = 100;
+
 #[derive(Debug, Clone)]
 pub enum PyinError {
     InvalidConfig(String),
@@ -92,6 +94,7 @@ pub struct Pyin {
     observation_frames: Vec<ObservationFrame>,
     viterbi: ViterbiTracker,
     last_emitted: usize,
+    frame_offset: u64,
     stage1_cfg: Stage1Config,
     yin_scratch: YinScratch,
 }
@@ -118,6 +121,7 @@ impl Pyin {
             observation_frames: Vec::new(),
             viterbi: ViterbiTracker::new(hmm_params),
             last_emitted: 0,
+            frame_offset: 0,
             stage1_cfg,
             yin_scratch: YinScratch::new(fft_len),
         })
@@ -131,6 +135,7 @@ impl Pyin {
         self.observation_frames.clear();
         self.viterbi = ViterbiTracker::new(HmmParams::new());
         self.last_emitted = 0;
+        self.frame_offset = 0;
     }
 
     pub fn push_bytes(&mut self, chunk: &[u8]) -> Result<Vec<FrameEstimate>, PyinError> {
@@ -167,7 +172,9 @@ impl Pyin {
         let mut output = Vec::with_capacity(new_states.len());
         for (offset, state) in new_states.into_iter().enumerate() {
             let idx = self.last_emitted + offset;
-            let time_sec = idx as f64 * self.cfg.hop_size as f64 / self.cfg.sample_rate_hz as f64;
+            let absolute_idx = self.frame_offset + idx as u64;
+            let time_sec = absolute_idx as f64 * self.cfg.hop_size as f64
+                / self.cfg.sample_rate_hz as f64;
             let obs = &self.observation_frames[idx];
             let (f0_hz, voiced, confidence) = if state.voiced {
                 let f0 = self.viterbi.params().bin_freqs[state.bin];
@@ -191,7 +198,7 @@ impl Pyin {
             };
 
             output.push(FrameEstimate {
-                frame_index: idx as u64,
+                frame_index: absolute_idx,
                 time_sec,
                 f0_hz,
                 voiced,
@@ -202,6 +209,7 @@ impl Pyin {
         }
 
         self.last_emitted = self.stage1_frames.len();
+        self.prune_history();
         Ok(output)
     }
 
@@ -214,6 +222,18 @@ impl Pyin {
         self.sample_buffer
             .truncate(self.sample_buffer.len() - self.sample_start);
         self.sample_start = 0;
+    }
+
+    fn prune_history(&mut self) {
+        if self.last_emitted <= MAX_HISTORY_FRAMES {
+            return;
+        }
+        let prune = self.last_emitted - MAX_HISTORY_FRAMES;
+        self.stage1_frames.drain(0..prune);
+        self.observation_frames.drain(0..prune);
+        self.viterbi.prune(prune);
+        self.last_emitted -= prune;
+        self.frame_offset += prune as u64;
     }
 }
 
@@ -231,4 +251,4 @@ mod tests {
     }
 }
 
-pub use frb::{init_logging, new_processor, push_and_get_midi, PyinProcessor};
+pub use frb::{init_logging, new_processor, process_stream, push_and_get_midi, PyinProcessor};
