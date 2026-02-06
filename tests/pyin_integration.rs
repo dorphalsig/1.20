@@ -43,6 +43,34 @@ fn run_stream(cfg: PyinConfig, samples: &[f32]) -> Vec<f32> {
     f0s
 }
 
+fn run_stream_frames(cfg: PyinConfig, samples: &[f32]) -> Vec<pyin_rs::FrameEstimate> {
+    let mut pyin = Pyin::new(cfg, PcmFormat::I16LE).unwrap();
+    let bytes = samples_to_i16le(samples);
+    let mut rng = StdRng::seed_from_u64(7);
+    let mut idx = 0;
+    let mut frames = Vec::new();
+    while idx < bytes.len() {
+        let chunk_size = rng.gen_range(1..2048).min(bytes.len() - idx);
+        let chunk = &bytes[idx..idx + chunk_size];
+        frames.extend(pyin.push_bytes(chunk).unwrap());
+        idx += chunk_size;
+    }
+    frames
+}
+
+fn median_hz_error(estimates: &[pyin_rs::FrameEstimate], target: f32) -> f32 {
+    let mut values: Vec<f32> = estimates
+        .iter()
+        .filter_map(|f| f.f0_hz)
+        .collect();
+    values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    if values.is_empty() {
+        return target;
+    }
+    let median = values[values.len() / 2];
+    (median - target).abs()
+}
+
 fn median_cents_error(estimates: &[f32], target: f32) -> f32 {
     let mut errors: Vec<f32> = estimates
         .iter()
@@ -205,4 +233,62 @@ fn regression_configurations() {
     let samples = sine_wave(440.0, 2.0, cfg.sample_rate_hz);
     let estimates = run_stream(cfg, &samples);
     assert!(median_cents_error(&estimates, 440.0) < 60.0);
+}
+
+#[test]
+fn golden_accuracy_hz_targets() {
+    let cfg = PyinConfig::default();
+    for &freq in &[110.0, 440.0, 880.0] {
+        let samples = sine_wave(freq, 2.0, cfg.sample_rate_hz);
+        let frames = run_stream_frames(cfg.clone(), &samples);
+        let error_hz = median_hz_error(&frames, freq);
+        assert!(error_hz <= 1.0, "freq {freq} error {error_hz}");
+    }
+}
+
+#[test]
+fn silence_is_unvoiced() {
+    let cfg = PyinConfig::default();
+    let samples = silence(1.5, cfg.sample_rate_hz);
+    let frames = run_stream_frames(cfg, &samples);
+    assert!(frames.iter().all(|f| f.f0_hz.is_none()));
+}
+
+#[test]
+fn white_noise_is_unvoiced() {
+    let cfg = PyinConfig::default();
+    let mut rng = StdRng::seed_from_u64(99);
+    let len = (2.0 * cfg.sample_rate_hz as f32) as usize;
+    let samples: Vec<f32> = (0..len)
+        .map(|_| rng.gen_range(-1.0..1.0))
+        .collect();
+    let frames = run_stream_frames(cfg, &samples);
+    let voiced_ratio =
+        frames.iter().filter(|f| f.f0_hz.is_some()).count() as f32 / frames.len().max(1) as f32;
+    assert!(voiced_ratio < 0.2);
+}
+
+#[test]
+fn sample_rate_mismatch_still_tracks() {
+    let mut cfg = PyinConfig::default();
+    cfg.sample_rate_hz = 44_100;
+    let samples = sine_wave(440.0, 2.0, 48_000);
+    let frames = run_stream_frames(cfg.clone(), &samples);
+    let expected = 440.0 * cfg.sample_rate_hz as f32 / 48_000.0;
+    let error_hz = median_hz_error(&frames, expected);
+    assert!(error_hz < 5.0);
+}
+
+#[test]
+fn streaming_continuity_across_pushes() {
+    let cfg = PyinConfig::default();
+    let samples = sine_wave(440.0, 2.0, cfg.sample_rate_hz);
+    let bytes = samples_to_i16le(&samples);
+    let split = bytes.len() / 2 + 1;
+    let mut pyin = Pyin::new(cfg, PcmFormat::I16LE).unwrap();
+    let _ = pyin.push_bytes(&bytes[..split]).unwrap();
+    let frames = pyin.push_bytes(&bytes[split..]).unwrap();
+    let first = frames.first().and_then(|f| f.f0_hz);
+    assert!(first.is_some());
+    assert!((first.unwrap() - 440.0).abs() <= 1.0);
 }

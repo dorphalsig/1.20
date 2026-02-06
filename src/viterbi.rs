@@ -161,3 +161,35 @@ fn safe_log(prob: f32) -> f32 {
     const FLOOR: f32 = 1e-12;
     prob.max(FLOOR).ln()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn obs_with_bin(bin: usize) -> ObservationFrame {
+        let mut p_star = vec![0.0; NUM_BINS];
+        p_star[bin] = 1.0;
+        ObservationFrame { p_star, sum_p: 1.0 }
+    }
+
+    #[test]
+    fn best_path_tracks_clear_transition() {
+        let mut tracker = ViterbiTracker::new(HmmParams::new());
+        let bin_a = 100;
+        let bin_b = 110;
+        for _ in 0..3 {
+            tracker.push(&obs_with_bin(bin_a));
+        }
+        for _ in 0..3 {
+            tracker.push(&obs_with_bin(bin_b));
+        }
+        let path = tracker.best_path();
+        assert_eq!(path.len(), 6);
+        for state in &path[..3] {
+            assert_eq!(state.bin, bin_a);
+        }
+        for state in &path[3..] {
+            assert_eq!(state.bin, bin_b);
+        }
+    }
+}

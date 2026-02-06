@@ -1,7 +1,9 @@
 use crate::{PcmFormat, Pyin, PyinConfig};
-use flutter_rust_bridge::StreamSink;
 use std::collections::VecDeque;
 use std::sync::Once;
+
+flutter_rust_bridge::frb_generated_sse_codec!();
+flutter_rust_bridge::frb_generated_stream_sink!(default_stream_sink_codec = DcoCodec);
 
 const UNVOICED_MIDI: u16 = 255;
 
