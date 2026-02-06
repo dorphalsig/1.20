@@ -22,25 +22,35 @@ int _mode(List<int> values) {
 Future<List<int>> _streamFixture(String assetPath) async {
   final data = await rootBundle.load(assetPath);
   final bytes = data.buffer.asUint8List();
+  final out = <int>[];
   final proc = await PyinFrbStreamProcessor.create(
     sampleRateHz: 48000,
     windowMs: 43,
     hopMs: 5,
+    onNote: (note) {
+      if (note != null) out.add(note);
+    },
   );
-
-  final out = <int>[];
   var offset = 0;
   var i = 0;
   while (offset < bytes.length) {
     final size = _chunkPattern[i % _chunkPattern.length];
     final end = (offset + size).clamp(0, bytes.length);
     final chunk = Uint8List.sublistView(bytes, offset, end);
-    final midi = await proc.push(chunk);
-    if (midi != null) out.add(midi);
+    proc.push(chunk);
     offset = end;
     i += 1;
   }
+  await _waitForNotes(out, 10);
+  await proc.dispose();
   return out;
+}
+
+Future<void> _waitForNotes(List<int> notes, int minCount) async {
+  final deadline = DateTime.now().add(const Duration(seconds: 2));
+  while (notes.length < minCount && DateTime.now().isBefore(deadline)) {
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
 }
 
 void runPyinFrbFixtureTests() {

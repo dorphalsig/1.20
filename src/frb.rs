@@ -15,6 +15,9 @@ pub struct PyinProcessor {
     frame_size_samples: usize,
     hop_size_samples: usize,
     invalid_config: bool,
+    stream_sink: Option<StreamSink<u16>>,
+    #[cfg(test)]
+    test_sink: Option<Box<dyn FnMut(u16) + Send>>,
 }
 
 impl PyinProcessor {
@@ -37,6 +40,9 @@ impl PyinProcessor {
                 frame_size_samples,
                 hop_size_samples,
                 invalid_config,
+                stream_sink: None,
+                #[cfg(test)]
+                test_sink: None,
             };
         }
 
@@ -65,6 +71,9 @@ impl PyinProcessor {
             frame_size_samples,
             hop_size_samples,
             invalid_config,
+            stream_sink: None,
+            #[cfg(test)]
+            test_sink: None,
         }
     }
 }
@@ -87,13 +96,22 @@ pub fn new_processor(sample_rate_hz: u32, window_ms: u32, hop_ms: u32) -> PyinPr
     PyinProcessor::new(sample_rate_hz, window_ms, hop_ms)
 }
 
-pub fn process_stream(
+pub fn start_event_stream(proc: &mut PyinProcessor, sink: StreamSink<u16>) {
+    proc.stream_sink = Some(sink);
+}
+
+#[cfg(test)]
+pub fn start_event_stream_with_callback(
     proc: &mut PyinProcessor,
-    pcm16le_bytes: Vec<u8>,
-    sink: StreamSink<u16>,
+    callback: impl FnMut(u16) + Send + 'static,
 ) {
+    proc.test_sink = Some(Box::new(callback));
+}
+
+pub fn push_pcm_task(proc: &mut PyinProcessor, pcm16le_bytes: Vec<u8>) {
     let run = || {
         if proc.invalid_config || proc.pyin.is_none() {
+            emit_note(proc, UNVOICED_MIDI);
             return;
         }
 
@@ -122,15 +140,13 @@ pub fn process_stream(
                 match pyin.push_bytes(&hop_bytes) {
                     Ok(frames) => {
                         for frame in frames {
-                            if let Some(note) = frame.midi_note {
-                                if let Err(err) = sink.add(note as u16) {
-                                    log::error!("failed to emit midi note: {:?}", err);
-                                }
-                            }
+                            let midi = frame.midi_note.map(u16::from).unwrap_or(UNVOICED_MIDI);
+                            emit_note(proc, midi);
                         }
                     }
                     Err(err) => {
                         log::error!("pYIN push_bytes failed: {:?}", err);
+                        emit_note(proc, UNVOICED_MIDI);
                         return;
                     }
                 }
@@ -143,7 +159,8 @@ pub fn process_stream(
     };
 
     if std::panic::catch_unwind(std::panic::AssertUnwindSafe(run)).is_err() {
-        log::error!("process_stream panicked");
+        log::error!("push_pcm_task panicked");
+        emit_note(proc, UNVOICED_MIDI);
     }
 }
 
@@ -234,9 +251,33 @@ fn parse_pcm16le_bytes(proc: &mut PyinProcessor, bytes: &[u8]) {
     }
 }
 
+fn emit_note(proc: &mut PyinProcessor, note: u16) {
+    if let Some(sink) = proc.stream_sink.as_ref() {
+        if let Err(err) = sink.add(note) {
+            log::error!("failed to emit midi note: {:?}", err);
+        }
+    }
+    #[cfg(test)]
+    if let Some(callback) = proc.test_sink.as_mut() {
+        callback(note);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn sine_wave_bytes(freq_hz: f32, duration_sec: f32, sample_rate: u32) -> Vec<u8> {
+        let len = (duration_sec * sample_rate as f32) as usize;
+        let mut bytes = Vec::with_capacity(len * 2);
+        for i in 0..len {
+            let t = i as f32 / sample_rate as f32;
+            let sample = (2.0 * std::f32::consts::PI * freq_hz * t).sin();
+            let s = (sample * 32767.0).clamp(-32768.0, 32767.0) as i16;
+            bytes.extend_from_slice(&s.to_le_bytes());
+        }
+        bytes
+    }
 
     #[test]
     fn odd_byte_leftover_across_pushes() {
@@ -255,5 +296,22 @@ mod tests {
         assert_eq!(crate::midi::midi_from_hz(220.0), 57);
         assert_eq!(crate::midi::midi_from_hz(440.0), 69);
         assert_eq!(crate::midi::midi_from_hz(1046.50), 84);
+    }
+
+    #[test]
+    fn push_pcm_task_emits_multiple_notes() {
+        let mut proc = new_processor(48_000, 43, 5);
+        let notes = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let notes_ref = notes.clone();
+        start_event_stream_with_callback(&mut proc, move |note| {
+            notes_ref.lock().unwrap().push(note);
+        });
+
+        let bytes = sine_wave_bytes(440.0, 0.3, 48_000);
+        push_pcm_task(&mut proc, bytes);
+
+        let notes = notes.lock().unwrap();
+        let voiced = notes.iter().filter(|&&note| note != UNVOICED_MIDI).count();
+        assert!(voiced > 1, "expected multiple voiced notes, got {voiced}");
     }
 }

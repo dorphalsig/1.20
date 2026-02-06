@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
@@ -19,6 +20,7 @@ class PyinProcessor {
 
   final List<int> _samples = <int>[];
   int? _carry;
+  StreamSink<int>? _sink;
 }
 
 Future<void> initLogging() async {}
@@ -35,23 +37,35 @@ Future<PyinProcessor> newProcessor({
   );
 }
 
-Future<int> pushAndGetMidi({
+Future<void> startEventStream({
+  required PyinProcessor proc,
+  required StreamSink<int> sink,
+}) async {
+  proc._sink = sink;
+}
+
+Future<void> pushPcmTask({
   required PyinProcessor proc,
   required Uint8List pcm16leBytes,
 }) async {
   _append(proc, pcm16leBytes);
-  if (proc.frameSize < proc.hopSize) return 255;
-  var latest = 255;
+  if (proc.frameSize < proc.hopSize) {
+    proc._sink?.add(255);
+    return;
+  }
+  if (proc._samples.length < proc.frameSize) return;
   while (proc._samples.length >= proc.frameSize) {
     final frame = proc._samples.sublist(0, proc.frameSize);
     final hz = _hz(frame, proc.sampleRateHz);
     if (hz != null) {
-      latest = (69 + 12 * (math.log(hz / 440.0) / math.ln2)).round().clamp(0, 127);
+      final midi = (69 + 12 * (math.log(hz / 440.0) / math.ln2)).round().clamp(0, 127);
+      proc._sink?.add(midi);
+    } else {
+      proc._sink?.add(255);
     }
     final drop = math.min(proc.hopSize, proc._samples.length);
     proc._samples.removeRange(0, drop);
   }
-  return latest;
 }
 
 void _append(PyinProcessor proc, Uint8List bytes) {

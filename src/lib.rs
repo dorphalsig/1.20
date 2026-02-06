@@ -251,4 +251,7 @@ mod tests {
     }
 }
 
-pub use frb::{init_logging, new_processor, process_stream, push_and_get_midi, PyinProcessor};
+pub use frb::{
+    init_logging, new_processor, push_and_get_midi, push_pcm_task, start_event_stream,
+    PyinProcessor,
+};
