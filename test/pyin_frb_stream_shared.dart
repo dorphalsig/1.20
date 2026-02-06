@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:integration_test/integration_test.dart';
 import 'package:pyin_rs/pyin_frb_wrapper.dart';
 
 const _chunkPattern = [511, 1023, 2048, 333, 4097, 777, 1500];
@@ -44,17 +43,15 @@ Future<List<int>> _streamFixture(String assetPath) async {
   return out;
 }
 
-void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-
-  final tests = {
+void runPyinFrbFixtureTests() {
+  final fixtures = {
     'integration_test/assets/pcm/a3_220_pcm16le_mono.pcm': 57,
     'integration_test/assets/pcm/a4_440_pcm16le_mono.pcm': 69,
     'integration_test/assets/pcm/c6_1046_50_pcm16le_mono.pcm': 84,
     'integration_test/assets/pcm/c2_pcm16le_mono.pcm': 36,
   };
 
-  tests.forEach((asset, expected) {
+  fixtures.forEach((asset, expected) {
     testWidgets(asset, (_) async {
       final voiced = await _streamFixture(asset);
       expect(voiced.length, greaterThanOrEqualTo(10));
