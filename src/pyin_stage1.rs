@@ -1,5 +1,5 @@
+use crate::yin::{difference_function_inplace, local_minima, parabolic_interpolation, YinScratch};
 use crate::{BetaPrior, PyinConfig};
-use crate::yin::{cumulative_mean_normalized_difference, difference_function, local_minima, parabolic_interpolation};
 
 #[derive(Debug, Clone)]
 pub struct Stage1Config {
@@ -40,15 +40,24 @@ pub struct Stage1CandidateFrame {
 }
 
 pub fn process_frame(frame: &[f32], cfg: &Stage1Config) -> Stage1CandidateFrame {
+    let mut scratch = YinScratch::new((frame.len().saturating_mul(2)).next_power_of_two().max(2));
+    process_frame_with_scratch(frame, cfg, &mut scratch)
+}
+
+pub fn process_frame_with_scratch(
+    frame: &[f32],
+    cfg: &Stage1Config,
+    scratch: &mut YinScratch,
+) -> Stage1CandidateFrame {
     let max_tau = (cfg.sample_rate_hz as f32 / cfg.fmin_hz).floor() as usize;
     let min_tau = (cfg.sample_rate_hz as f32 / cfg.fmax_hz).ceil() as usize;
     let max_tau = max_tau.min(cfg.frame_size.saturating_sub(1));
     let min_tau = min_tau.max(1).min(max_tau);
 
-    let diff = difference_function(frame, max_tau);
-    let cmnd = cumulative_mean_normalized_difference(&diff);
+    let diff_len = difference_function_inplace(frame, max_tau, scratch);
+    let cmnd = scratch.compute_cmnd_from_diff(diff_len);
 
-    let minima = local_minima(&cmnd);
+    let minima = local_minima(cmnd);
     let global_min_tau = (min_tau..=max_tau)
         .min_by(|&a, &b| cmnd[a].partial_cmp(&cmnd[b]).unwrap())
         .unwrap_or(min_tau);
@@ -57,7 +66,7 @@ pub fn process_frame(frame: &[f32], cfg: &Stage1Config) -> Stage1CandidateFrame 
 
     for (idx, threshold) in cfg.thresholds.iter().enumerate() {
         let mut selected_tau = None;
-        for &tau in minima.iter() {
+        for &tau in &minima {
             if tau < min_tau || tau > max_tau {
                 continue;
             }
@@ -66,10 +75,7 @@ pub fn process_frame(frame: &[f32], cfg: &Stage1Config) -> Stage1CandidateFrame 
                 break;
             }
         }
-        // pYIN Stage 1: Eq. (4) and (5) from the paper.
-        // Y(x_t, s_i) returns the smallest local minimum below s_i; otherwise
-        // we fall back to the global minimum with the absolute-minimum strategy
-        // weight pa (a(s_i, τ) = pa).
+
         let (tau, a_weight) = if let Some(tau) = selected_tau {
             (tau, 1.0)
         } else {
@@ -86,7 +92,7 @@ pub fn process_frame(frame: &[f32], cfg: &Stage1Config) -> Stage1CandidateFrame 
 
     let mut candidates = Vec::new();
     for (tau, prob) in candidate_map {
-        let refined_tau = parabolic_interpolation(&cmnd, tau).max(1.0);
+        let refined_tau = parabolic_interpolation(cmnd, tau).max(1.0);
         let frequency = cfg.sample_rate_hz as f32 / refined_tau;
         candidates.push(Candidate {
             frequency_hz: frequency,
@@ -97,7 +103,6 @@ pub fn process_frame(frame: &[f32], cfg: &Stage1Config) -> Stage1CandidateFrame 
     Stage1CandidateFrame { candidates }
 }
 
-/// Compute discrete beta prior weights over thresholds.
 fn beta_prior_distribution(thresholds: &[f32], prior: BetaPrior) -> Vec<f32> {
     let (alpha, beta) = prior.alpha_beta();
     let mut weights: Vec<f32> = thresholds
@@ -112,7 +117,7 @@ fn beta_prior_distribution(thresholds: &[f32], prior: BetaPrior) -> Vec<f32> {
         .collect();
     let sum: f32 = weights.iter().sum();
     if sum > 0.0 {
-        for w in weights.iter_mut() {
+        for w in &mut weights {
             *w /= sum;
         }
     }

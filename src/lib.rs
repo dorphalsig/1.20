@@ -15,9 +15,10 @@ mod yin;
 
 use hmm::{HmmParams, ObservationFrame};
 use midi::midi_from_hz;
-use pcm::parse_pcm_bytes;
-use pyin_stage1::{Stage1CandidateFrame, Stage1Config};
+use pcm::parse_pcm_bytes_into;
+use pyin_stage1::{process_frame_with_scratch, Stage1CandidateFrame, Stage1Config};
 use viterbi::ViterbiTracker;
+use yin::YinScratch;
 
 #[derive(Debug, Clone)]
 pub enum PyinError {
@@ -76,8 +77,6 @@ pub struct FrameEstimate {
     pub time_sec: f64,
     pub f0_hz: Option<f32>,
     pub voiced: bool,
-    /// Confidence is derived from the observation probability assigned to the
-    /// winning HMM state (voiced or unvoiced). See `hmm::observation_from_candidates`.
     pub confidence: f32,
     pub midi_note: Option<u8>,
     pub candidates: Option<Vec<(f32, f32)>>,
@@ -87,11 +86,14 @@ pub struct Pyin {
     cfg: PyinConfig,
     pcm_format: PcmFormat,
     sample_buffer: Vec<f32>,
+    sample_start: usize,
     leftover_bytes: Vec<u8>,
     stage1_frames: Vec<Stage1CandidateFrame>,
     observation_frames: Vec<ObservationFrame>,
     viterbi: ViterbiTracker,
     last_emitted: usize,
+    stage1_cfg: Stage1Config,
+    yin_scratch: YinScratch,
 }
 
 impl Pyin {
@@ -102,20 +104,28 @@ impl Pyin {
             ));
         }
         let hmm_params = HmmParams::new();
+        let stage1_cfg = Stage1Config::from_config(&cfg);
+        let fft_len = (cfg.frame_size.saturating_mul(2))
+            .next_power_of_two()
+            .max(2);
         Ok(Self {
             cfg,
             pcm_format,
             sample_buffer: Vec::new(),
+            sample_start: 0,
             leftover_bytes: Vec::new(),
             stage1_frames: Vec::new(),
             observation_frames: Vec::new(),
             viterbi: ViterbiTracker::new(hmm_params),
             last_emitted: 0,
+            stage1_cfg,
+            yin_scratch: YinScratch::new(fft_len),
         })
     }
 
     pub fn reset(&mut self) {
         self.sample_buffer.clear();
+        self.sample_start = 0;
         self.leftover_bytes.clear();
         self.stage1_frames.clear();
         self.observation_frames.clear();
@@ -124,17 +134,23 @@ impl Pyin {
     }
 
     pub fn push_bytes(&mut self, chunk: &[u8]) -> Result<Vec<FrameEstimate>, PyinError> {
-        let new_samples = parse_pcm_bytes(chunk, self.pcm_format, &mut self.leftover_bytes);
-        self.sample_buffer.extend_from_slice(&new_samples);
+        parse_pcm_bytes_into(
+            chunk,
+            self.pcm_format,
+            &mut self.leftover_bytes,
+            &mut self.sample_buffer,
+        );
 
-        let stage1_cfg = Stage1Config::from_config(&self.cfg);
-
-        while self.sample_buffer.len() >= self.cfg.frame_size {
-            let frame = &self.sample_buffer[..self.cfg.frame_size];
-            let candidate_frame = pyin_stage1::process_frame(frame, &stage1_cfg);
+        while self.sample_buffer.len().saturating_sub(self.sample_start) >= self.cfg.frame_size {
+            let frame =
+                &self.sample_buffer[self.sample_start..self.sample_start + self.cfg.frame_size];
+            let candidate_frame =
+                process_frame_with_scratch(frame, &self.stage1_cfg, &mut self.yin_scratch);
             self.stage1_frames.push(candidate_frame);
-            self.sample_buffer.drain(..self.cfg.hop_size.min(self.sample_buffer.len()));
+            self.sample_start += self.cfg.hop_size;
         }
+
+        self.compact_sample_buffer_if_needed();
 
         if self.stage1_frames.is_empty() {
             return Ok(Vec::new());
@@ -147,10 +163,10 @@ impl Pyin {
             self.observation_frames.push(obs);
         }
 
-        let state_path = self.viterbi.best_path();
-
-        let mut output = Vec::new();
-        for (idx, state) in state_path.into_iter().enumerate().skip(self.last_emitted) {
+        let new_states = self.viterbi.best_suffix_from(self.last_emitted);
+        let mut output = Vec::with_capacity(new_states.len());
+        for (offset, state) in new_states.into_iter().enumerate() {
+            let idx = self.last_emitted + offset;
             let time_sec = idx as f64 * self.cfg.hop_size as f64 / self.cfg.sample_rate_hz as f64;
             let obs = &self.observation_frames[idx];
             let (f0_hz, voiced, confidence) = if state.voiced {
@@ -188,6 +204,17 @@ impl Pyin {
         self.last_emitted = self.stage1_frames.len();
         Ok(output)
     }
+
+    fn compact_sample_buffer_if_needed(&mut self) {
+        let threshold = self.cfg.frame_size.saturating_mul(4).max(8192);
+        if self.sample_start <= threshold {
+            return;
+        }
+        self.sample_buffer.copy_within(self.sample_start.., 0);
+        self.sample_buffer
+            .truncate(self.sample_buffer.len() - self.sample_start);
+        self.sample_start = 0;
+    }
 }
 
 pub use pcm::PcmFormat;
@@ -203,6 +230,5 @@ mod tests {
         assert_eq!(midi_from_hz(220.0), 57);
     }
 }
-
 
 pub use frb::{init_logging, new_processor, push_and_get_midi, PyinProcessor};

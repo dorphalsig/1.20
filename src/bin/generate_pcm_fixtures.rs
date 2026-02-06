@@ -29,7 +29,12 @@ fn decode_ogg_to_mono_pcm16le(input: &Path) -> Vec<u8> {
     hint.with_extension("ogg");
 
     let probed = symphonia::default::get_probe()
-        .format(&hint, mss, &FormatOptions::default(), &MetadataOptions::default())
+        .format(
+            &hint,
+            mss,
+            &FormatOptions::default(),
+            &MetadataOptions::default(),
+        )
         .expect("probe ogg");
     let mut format = probed.format;
     let track = format.default_track().expect("default track");
@@ -114,7 +119,10 @@ fn main() {
         let pcm = if Path::new(input).exists() {
             decode_ogg_to_mono_pcm16le(Path::new(input))
         } else {
-            eprintln!("warning: {} missing, generating synthetic {} Hz fallback", input, fallback_hz);
+            eprintln!(
+                "warning: {} missing, generating synthetic {} Hz fallback",
+                input, fallback_hz
+            );
             sine_pcm(fallback_hz, 2.0, 48_000)
         };
         let out_path = out_dir.join(output_name);

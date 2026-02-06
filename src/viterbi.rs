@@ -42,16 +42,20 @@ impl ViterbiTracker {
                 let voiced_log = safe_log(0.5 * obs.p_star[next_bin]);
 
                 for &next_voiced in &[false, true] {
-                    let obs_log = if next_voiced { voiced_log } else { unvoiced_log };
+                    let obs_log = if next_voiced {
+                        voiced_log
+                    } else {
+                        unvoiced_log
+                    };
                     let mut best_prev = f32::NEG_INFINITY;
                     let mut best_state = 0;
                     let min_prev = next_bin.saturating_sub(25);
                     let max_prev = (next_bin + 25).min(NUM_BINS - 1);
                     for prev_bin in min_prev..=max_prev {
                         let delta = next_bin as i32 - prev_bin as i32;
-                        let pitch_log = self.params.log_pitch_transition[delta_index(delta).unwrap()];
+                        let pitch_log =
+                            self.params.log_pitch_transition[delta_index(delta).unwrap()];
                         for &prev_voiced in &[false, true] {
-                            // Eq. (7): voicing transition. Eq. (8): triangular pitch transition.
                             let voicing_log = if prev_voiced == next_voiced {
                                 self.params.log_voicing_stay
                             } else {
@@ -77,11 +81,12 @@ impl ViterbiTracker {
         self.frames += 1;
     }
 
-    pub fn best_path(&self) -> Vec<HmmState> {
-        if self.frames == 0 {
+    pub fn best_suffix_from(&self, start_frame: usize) -> Vec<HmmState> {
+        if self.frames == 0 || start_frame >= self.frames {
             return Vec::new();
         }
-        let mut best_final = 0;
+
+        let mut best_final = 0usize;
         let mut best_score = f32::NEG_INFINITY;
         for (idx, score) in self.prev_scores.iter().enumerate() {
             if *score > best_score {
@@ -90,12 +95,20 @@ impl ViterbiTracker {
             }
         }
 
-        let mut path = vec![best_final; self.frames];
-        for t in (1..self.frames).rev() {
-            path[t - 1] = self.backpointers[t][path[t]];
+        let mut state = best_final;
+        let mut rev = Vec::with_capacity(self.frames - start_frame);
+        for t in (start_frame..self.frames).rev() {
+            rev.push(state_from_index(state));
+            if t > 0 {
+                state = self.backpointers[t][state];
+            }
         }
+        rev.reverse();
+        rev
+    }
 
-        path.into_iter().map(state_from_index).collect()
+    pub fn best_path(&self) -> Vec<HmmState> {
+        self.best_suffix_from(0)
     }
 
     pub fn params(&self) -> &HmmParams {
@@ -118,12 +131,14 @@ fn state_from_index(idx: usize) -> HmmState {
             voiced: true,
         }
     } else {
-        HmmState { bin: idx, voiced: false }
+        HmmState {
+            bin: idx,
+            voiced: false,
+        }
     }
 }
 
 fn safe_log(prob: f32) -> f32 {
-    // Numerical stability: avoid log(0) while preserving relative scoring.
     const FLOOR: f32 = 1e-12;
     prob.max(FLOOR).ln()
 }

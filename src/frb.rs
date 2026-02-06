@@ -101,7 +101,12 @@ pub fn push_and_get_midi(proc: &mut PyinProcessor, pcm16le_bytes: Vec<u8>) -> u1
         let mut latest_midi = UNVOICED_MIDI;
 
         while proc.sample_queue.len() >= proc.frame_size_samples {
-            for (idx, sample) in proc.sample_queue.iter().take(proc.frame_size_samples).enumerate() {
+            for (idx, sample) in proc
+                .sample_queue
+                .iter()
+                .take(proc.frame_size_samples)
+                .enumerate()
+            {
                 proc.frame_buf[idx] = *sample;
             }
 
@@ -149,7 +154,8 @@ fn parse_pcm16le_bytes(proc: &mut PyinProcessor, bytes: &[u8]) {
 
     if let Some(prev) = proc.carry_byte.take() {
         if let Some(&next) = bytes.first() {
-            proc.sample_queue.push_back(i16::from_le_bytes([prev, next]));
+            proc.sample_queue
+                .push_back(i16::from_le_bytes([prev, next]));
             idx = 1;
         } else {
             proc.carry_byte = Some(prev);

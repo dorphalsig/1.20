@@ -43,7 +43,6 @@ fn run_stream(cfg: PyinConfig, samples: &[f32]) -> Vec<f32> {
     f0s
 }
 
-
 fn median_cents_error(estimates: &[f32], target: f32) -> f32 {
     let mut errors: Vec<f32> = estimates
         .iter()
@@ -63,8 +62,8 @@ fn single_sine_tones_accuracy() {
     for &freq in &[110.0, 220.0, 440.0, 523.25] {
         let samples = sine_wave(freq, 2.5, cfg.sample_rate_hz);
         let estimates = run_stream(cfg.clone(), &samples);
-        let voiced_ratio = estimates.iter().filter(|v| **v > 0.0).count() as f32
-            / estimates.len().max(1) as f32;
+        let voiced_ratio =
+            estimates.iter().filter(|v| **v > 0.0).count() as f32 / estimates.len().max(1) as f32;
         assert!(voiced_ratio > 0.8);
         let median_error = median_cents_error(&estimates, freq);
         assert!(median_error < 25.0);
