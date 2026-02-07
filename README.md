@@ -1,4 +1,6 @@
 # pyin_rs Flutter + Rust (FRB)
+## Paths
+flutter is installed in /opt/flutter, make sure to add /opt/flutter/bin to the PATH environment var.
 
 ## CI gate commands
 
